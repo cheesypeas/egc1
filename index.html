@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>egc1</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inconsolata:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Orbitron', 'Courier New', monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: #000;
+            background-image: 
+                repeating-linear-gradient(
+                    0deg,
+                    rgba(0, 255, 0, 0.03) 0px,
+                    transparent 1px,
+                    transparent 2px,
+                    rgba(0, 255, 0, 0.03) 3px
+                );
+            padding: 2rem;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 50% 50%, rgba(0, 255, 0, 0.1) 0%, transparent 70%);
+            pointer-events: none;
+        }
+        
+        .logo {
+            max-width: 300px;
+            width: 100%;
+            height: auto;
+            margin-bottom: 2.5rem;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .email-link {
+            color: #00ff00;
+            text-decoration: none;
+            font-family: 'Inconsolata', monospace;
+            font-size: 1rem;
+            font-weight: 400;
+            text-transform: lowercase;
+            text-shadow: 
+                0 0 10px rgba(0, 255, 0, 0.8),
+                0 0 20px rgba(0, 255, 0, 0.5);
+            transition: all 0.3s;
+            position: relative;
+            z-index: 1;
+            padding: 0.5rem 1rem;
+            border: 2px solid #00ff00;
+            box-shadow: 
+                0 0 10px rgba(0, 255, 0, 0.5),
+                inset 0 0 10px rgba(0, 255, 0, 0.1);
+        }
+        
+        .email-link:hover {
+            color: #000;
+            background-color: #00ff00;
+            box-shadow: 
+                0 0 20px rgba(0, 255, 0, 0.8),
+                0 0 40px rgba(0, 255, 0, 0.6),
+                inset 0 0 20px rgba(0, 0, 0, 0.2);
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body>
+    <img src="egc1.png" alt="egc1 logo" class="logo">
+    <a href="mailto:will@egc.one" class="email-link">will@egc.one</a>
+</body>
+</html>
