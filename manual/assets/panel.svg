@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1040 660" fill="none">
   <title>The egc1 instrument: front-panel control map</title>
-  <desc>An original simplified drawing with piano keys along the bottom, four yellow buttons above them, two central knobs, joystick at upper left, rollerball at upper right, purple Loop button at lower left and orange turntable at lower right.</desc>
+  <desc>An original simplified drawing with piano keys along the bottom, four yellow buttons above them, two central knobs, green turntable at upper left, green joystick at upper right, purple Loop button at lower left and orange rollerball at lower right.</desc>
   <defs>
     <pattern id="grid" width="26" height="26" patternUnits="userSpaceOnUse"><path d="M26 0H0V26" stroke="#18271c" stroke-width=".5"/></pattern>
     <linearGradient id="case" x1="520" y1="110" x2="520" y2="550" gradientUnits="userSpaceOnUse"><stop stop-color="#23312a"/><stop offset="1" stop-color="#111b15"/></linearGradient>
@@ -16,14 +16,15 @@
   <text x="520" y="323" text-anchor="middle" fill="#8fa4b7" font-family="monospace" font-size="12" letter-spacing="3">egc1</text>
   <circle cx="229" cy="219" r="78" fill="#203b20" stroke="#67855a" stroke-width="2"/>
   <circle cx="229" cy="219" r="55" fill="#294e28" stroke="#8caa68"/>
-  <path d="M229 179V259M189 219H269" stroke="#6c965a" stroke-width="2"/>
-  <ellipse cx="229" cy="226" rx="24" ry="11" fill="#172d19"/>
-  <path d="M219 222L223 187H235L239 222" fill="#6a8e47" stroke="#98b564"/>
-  <ellipse cx="229" cy="184" rx="23" ry="14" fill="#799e4f" stroke="#b0c879"/>
+  <circle cx="229" cy="219" r="35" stroke="#8caa68"/>
+  <circle cx="229" cy="219" r="5" fill="#a4bd69"/>
+  <path d="M262 189Q277 205 271 225" stroke="#c4d494" stroke-width="3"/>
   <circle cx="811" cy="219" r="78" fill="#203b20" stroke="#67855a" stroke-width="2"/>
-  <circle cx="811" cy="219" r="55" fill="#172b19" stroke="#6a894d"/>
-  <circle cx="811" cy="219" r="40" fill="#789c48" stroke="#a4bd69" stroke-width="2"/>
-  <path d="M789 194Q808 181 828 198" stroke="#c4d494" stroke-width="3" stroke-linecap="round" opacity=".6"/>
+  <circle cx="811" cy="219" r="55" fill="#294e28" stroke="#8caa68"/>
+  <path d="M811 179V259M771 219H851" stroke="#6c965a" stroke-width="2"/>
+  <ellipse cx="811" cy="226" rx="24" ry="11" fill="#172d19"/>
+  <path d="M801 222L805 187H817L821 222" fill="#6a8e47" stroke="#98b564"/>
+  <ellipse cx="811" cy="184" rx="23" ry="14" fill="#799e4f" stroke="#b0c879"/>
   <circle cx="415" cy="231" r="35" fill="#102c3b" stroke="#7bc9e2" stroke-width="2"/>
   <circle cx="415" cy="231" r="22" fill="#438eaa"/>
   <circle cx="415" cy="231" r="9" fill="#b7f7ff"/>
@@ -43,10 +44,9 @@
   <circle cx="229" cy="412" r="55" stroke="#a76190"/>
   <text x="229" y="419" fill="#ffd4ee" text-anchor="middle" font-family="monospace" font-size="20" letter-spacing="3">LOOP</text>
   <circle cx="811" cy="412" r="77" fill="#503421" stroke="#c28b50" stroke-width="2"/>
-  <circle cx="811" cy="412" r="54" stroke="#b47b40"/>
-  <circle cx="811" cy="412" r="35" stroke="#b47b40"/>
-  <circle cx="811" cy="412" r="5" fill="#c28b50"/>
-  <path d="M844 382Q859 398 853 418" stroke="#edb97a" stroke-width="3"/>
+  <circle cx="811" cy="412" r="54" fill="#35251a" stroke="#b47b40"/>
+  <circle cx="811" cy="412" r="40" fill="#ac6c32" stroke="#d8a66e" stroke-width="2"/>
+  <path d="M789 387Q808 374 828 391" stroke="#f3cea0" stroke-width="3" stroke-linecap="round" opacity=".6"/>
   <g stroke-width="1.5">
     <path d="M325 432L369 442L361 520L314 509Z" fill="#244e63" stroke="#79abc1"/>
     <path d="M377 444L421 450L417 530L368 522Z" fill="#2c553c" stroke="#80b592"/>
@@ -59,5 +59,5 @@
   </g>
   <g font-family="monospace" font-size="21" fill="#fff" text-anchor="middle"><text x="343" y="484">1</text><text x="395" y="493">2</text><text x="449" y="498">3</text><text x="503" y="499">4</text><text x="557" y="498">5</text><text x="611" y="493">6</text><text x="664" y="484">7</text><text x="718" y="474">8</text></g>
   <g stroke="#8bac83" stroke-width="1.2"><path d="M229 140V93H35"/><path d="M811 140V93H1005"/><path d="M380 231H320L296 285H35"/><path d="M660 231H720L744 285H1005"/><path d="M152 412H35"/><path d="M888 412H1005"/><path d="M515 414L510 561L395 606H35"/><path d="M694 355L746 549L842 606H1005"/></g>
-  <g fill="#d9e9d3" font-family="monospace" font-size="16"><text x="35" y="79"><tspan fill="#6aff6a">05</tspan> JOYSTICK</text><text x="1005" y="79" text-anchor="end"><tspan fill="#6aff6a">06</tspan> ROLLERBALL</text><text x="35" y="271"><tspan fill="#6aff6a">03</tspan> LEFT KNOB</text><text x="1005" y="271" text-anchor="end"><tspan fill="#6aff6a">04</tspan> RIGHT KNOB</text><text x="35" y="398"><tspan fill="#6aff6a">02</tspan> LOOP</text><text x="1005" y="398" text-anchor="end"><tspan fill="#6aff6a">07</tspan> TURNTABLE</text><text x="35" y="634"><tspan fill="#6aff6a">01</tspan> PIANO KEYS / 1–8</text><text x="1005" y="634" text-anchor="end"><tspan fill="#6aff6a">08</tspan> YELLOW BUTTONS</text></g>
+  <g fill="#d9e9d3" font-family="monospace" font-size="16"><text x="35" y="79"><tspan fill="#6aff6a">07</tspan> TURNTABLE</text><text x="1005" y="79" text-anchor="end"><tspan fill="#6aff6a">05</tspan> JOYSTICK</text><text x="35" y="271"><tspan fill="#6aff6a">03</tspan> LEFT KNOB</text><text x="1005" y="271" text-anchor="end"><tspan fill="#6aff6a">04</tspan> RIGHT KNOB</text><text x="35" y="398"><tspan fill="#6aff6a">02</tspan> LOOP</text><text x="1005" y="398" text-anchor="end"><tspan fill="#6aff6a">06</tspan> ROLLERBALL</text><text x="35" y="634"><tspan fill="#6aff6a">01</tspan> PIANO KEYS / 1–8</text><text x="1005" y="634" text-anchor="end"><tspan fill="#6aff6a">08</tspan> YELLOW BUTTONS</text></g>
 </svg>

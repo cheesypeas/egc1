@@ -72,15 +72,15 @@
                     <p class="section-number">02 / Front panel</p>
                     <h2>Meet the controls</h2>
                     <p>Read the panel with the piano keys along the bottom. The four yellow buttons run <strong>Transport → Instrument → Mode → Quantise</strong> from left to right. In this guide, “hold + tap” means keep the first control held while pressing the second.</p>
-                    <figure class="diagram"><a href="assets/panel.svg" aria-label="Open the panel diagram at full size"><img src="assets/panel.svg" width="1040" height="660" alt="Schematic front panel with eight piano keys below four yellow buttons, two central knobs, a purple Loop button, orange turntable, joystick and rollerball. The numbered controls are explained below."></a><figcaption>Original schematic, with a simplified case and controls. <a href="assets/panel.svg">Open diagram at full size ↗</a></figcaption></figure>
+                    <figure class="diagram"><a href="assets/panel.svg" aria-label="Open the panel diagram at full size"><img src="assets/panel.svg" width="1040" height="660" alt="Schematic front panel with eight piano keys below four yellow buttons and two central knobs. Green turntable at upper left, green joystick at upper right, purple Loop button at lower left, and orange rollerball at lower right. The numbered controls are explained below."></a><figcaption>Original schematic, with a simplified case and controls. <a href="assets/panel.svg">Open diagram at full size ↗</a></figcaption></figure>
                     <dl class="control-list">
                         <div><dt>01 / Piano keys</dt><dd>Play notes in Play mode; switch channels on and off in Channel mode. With a modifier held, select an instrument, loop length, or quantisation grid.</dd></div>
                         <div><dt>02 / Purple Loop button</dt><dd>Arm a note recording and finish a take. Also works with Transport for full-loop notes and Instrument for audio sampling. Holding it clears material; see <a href="#performance">clearing</a>.</dd></div>
                         <div><dt>03 / Left knob</dt><dd>Turn for selected-channel volume; click for stop/start. Hold Transport while turning for global tempo. Hold Instrument while turning for the selected melodic channel’s octave.</dd></div>
                         <div><dt>04 / Right knob</dt><dd>Turn to set the selected effect amount. Click to alternate between the two parameters in a joystick direction. Hold Instrument while turning to change the melodic root note.</dd></div>
-                        <div><dt>05 / Joystick</dt><dd>Hold a direction to engage its effects. Turn the right knob to adjust them. Return to centre to restore the resting values, unless you have latched them.</dd></div>
-                        <div><dt>06 / Rollerball</dt><dd>Press for a master backspin on the recent mix, returning to live audio at the next bar. This needs the backspin firmware and sound-engine configuration; see <a href="#performance">performance</a>.</dd></div>
-                        <div><dt>07 / Orange turntable</dt><dd>Its switch resets the session. Modifier combinations give it more selective reset and note-off actions. Treat an unmodified press as destructive.</dd></div>
+                        <div><dt>05 / Green joystick · upper right</dt><dd>Hold a direction to engage its effects. Turn the right knob to adjust them. Return to centre to restore the resting values, unless you have latched them.</dd></div>
+                        <div><dt>06 / Orange rollerball · lower right</dt><dd>Press for a master backspin on the recent mix, returning to live audio at the next bar. This needs the backspin firmware and sound-engine configuration; see <a href="#performance">performance</a>.</dd></div>
+                        <div><dt>07 / Green turntable · upper left</dt><dd>Its switch resets the session. Modifier combinations give it more selective reset and note-off actions. Treat an unmodified press as destructive.</dd></div>
                         <div><dt>08 / Yellow buttons</dt><dd>Transport, Instrument, and Quantise modify other controls while held. Mode switches between playing notes and switching channels.</dd></div>
                     </dl>
                     <h3>Read the left-knob light</h3>
@@ -209,7 +209,7 @@
                     <h3>Clear deliberately</h3>
                     <div class="table-wrap"><table><thead><tr><th scope="col">Gesture</th><th scope="col">Result</th></tr></thead><tbody>
                         <tr><td>Hold purple Loop</td><td>Invokes clear after roughly half a second. In recording state this discards the unfinished take; otherwise it clears the selected channel’s stored notes. If no stored notes remain, the sequencer resets.</td></tr>
-                        <tr><td>Press orange Turntable</td><td>Reset the whole note session, transport, mixer, effects, and channel defaults. Selected channel and sound-choice values are preserved.</td></tr>
+                        <tr><td>Press green Turntable (upper left)</td><td>Reset the whole note session, transport, mixer, effects, and channel defaults. Selected channel and sound-choice values are preserved.</td></tr>
                         <tr><td>Hold Mode + press Turntable</td><td>Clear and restore defaults for the channels currently switched off. Mode changes as soon as you press it, so check the lit channel keys before pressing the turntable.</td></tr>
                         <tr><td>Hold Instrument + press Turntable</td><td>Send All Notes Off to the selected channel. This ends sounding notes without deleting the sequence; playback can trigger them again.</td></tr>
                     </tbody></table></div>

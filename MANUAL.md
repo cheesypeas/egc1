@@ -12,6 +12,9 @@ have local fallbacks. No package installation or build is needed.
 The SVG panel and recording timeline in `manual/assets/` are original drawings.
 The supplied reference photo is deliberately not included. Yellow-button order
 was confirmed by the owner as Transport, Instrument, Mode, Quantise.
+The owner also confirmed the round controls with keys along the bottom: green
+turntable upper left, green joystick upper right, orange rollerball lower right,
+and purple Loop button lower left.
 
 ## Content sources
 
