@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="The egc1 instrument manual. Learn the controls, record your first loop, sample audio, and perform with ToySequencer and ToySampler.">
+    <meta name="theme-color" content="#050805">
+    <title>Instrument manual — egc1</title>
+    <link rel="stylesheet" href="manual.css">
+    <script src="manual.js" defer></script>
+</head>
+<body>
+    <a class="skip" href="#main">Skip to manual</a>
+    <header class="masthead">
+        <a class="brand" href="../" aria-label="egc1 home"><img src="../egc1.png" alt="egc1"><span>Instrument manual</span></a>
+        <div class="header-actions"><a href="#shortcuts">Quick reference ↗</a><button id="print-manual" class="enhancement" hidden type="button">Print / PDF</button></div>
+    </header>
+    <div class="shell">
+        <aside class="sidebar">
+            <details id="contents" open>
+                <summary>In this manual</summary>
+                <p class="eyebrow">Find your way</p>
+                <nav aria-label="Manual contents">
+                    <a href="#first-loop"><span>01</span>Your first loop</a>
+                    <a href="#panel"><span>02</span>Meet the controls</a>
+                    <a href="#channels"><span>03</span>Eight instruments</a>
+                    <a href="#recording"><span>04</span>Building a recording</a>
+                    <a href="#timing"><span>05</span>Length &amp; timing</a>
+                    <a href="#sampling"><span>06</span>Sampling audio</a>
+                    <a href="#effects"><span>07</span>Joystick &amp; effects</a>
+                    <a href="#scales"><span>08</span>Notes &amp; scales</a>
+                    <a href="#performance"><span>09</span>Performing &amp; clearing</a>
+                    <a href="#shortcuts"><span>10</span>Quick reference</a>
+                    <a href="#troubleshooting"><span>11</span>Something quiet?</a>
+                    <a href="#about"><span>12</span>About this manual</a>
+                </nav>
+                <p class="sidebar-note">Keep this open beside the instrument.<br><br>Keys are numbered <strong>1–8, left to right.</strong></p>
+            </details>
+        </aside>
+        <main id="main">
+            <div class="hero">
+                <p class="eyebrow">egc1 / User guide</p>
+                <h1>A small instrument.<br><span>A lot to play with.</span></h1>
+                <p class="lede">Eight instruments, live looping, sampling, and hands-on effects. Get to know the whole instrument: the ToySequencer controls and the ToySampler sound engine working together.</p>
+                <div class="hero-links"><a class="primary-link" href="#first-loop">Make your first loop ↓</a><a class="secondary-link" href="#panel">Explore the controls ↗</a></div>
+                <div class="meta"><span><b>08</b> instrument channels</span><span><b>02</b> performance modes</span><span><b>01</b> shared loop clock</span></div>
+            </div>
+
+            <div class="search enhancement" hidden role="search" aria-label="Search manual">
+                <label for="manual-search">Find a control, technique, or effect</label>
+                <div class="search-line"><input id="manual-search" type="search" placeholder="Try “reverse”, “sound”, or “quantise”…" autocomplete="off" aria-controls="manual-content" aria-describedby="search-status"><button type="button" id="clear-search">Clear</button></div>
+                <output id="search-status" aria-live="polite"></output>
+            </div>
+
+            <div id="manual-content">
+                <section class="manual-section" id="first-loop" data-keywords="startup boot begin beginners drums first recording purple">
+                    <p class="section-number">01 / Start here</p>
+                    <h2>Your first loop</h2>
+                    <p class="intro">Start with a beat. The first phrase you record sets the length that everything else follows.</p>
+                    <ol class="steps">
+                        <li><strong>Let it wake up.</strong><p>Connect the instrument to your audio setup, turn the listening level down, and power it on. Wait for the key-and-knob startup animation to finish: the controller allows roughly a minute for the sound engine to boot. Then bring up the listening level.</p></li>
+                        <li><strong>Choose the first drum instrument.</strong><p>Hold <kbd>Instrument</kbd>, tap piano <kbd>1</kbd>, then release Instrument. The selected channel’s key flashes. In Play mode, the eight piano keys now play drum sounds.</p></li>
+                        <li><strong>Arm the recording.</strong><p>Tap the big purple <kbd>Loop</kbd> button. Recording waits for your first note, so there is no need to rush.</p></li>
+                        <li><strong>Play a phrase, then close the loop.</strong><p>Play a rhythm. Tap <kbd>Loop</kbd> again exactly where the phrase should repeat. The time from your first note to this press becomes the base loop. Playback begins immediately.</p></li>
+                        <li><strong>Add another part.</strong><p>Hold <kbd>Instrument</kbd> and tap <kbd>5</kbd> for a sampled synth. Release Instrument, tap <kbd>Loop</kbd> to arm, play along, and tap <kbd>Loop</kbd> to keep the take.</p></li>
+                        <li><strong>Stop and start.</strong><p>Click the <kbd>Left knob</kbd> to stop. Click it again to restart from the beginning. Turn it to balance the selected instrument’s level.</p></li>
+                    </ol>
+                    <div class="callout"><p><strong>First-loop timing is yours.</strong> There is no count-in or automatic bar rounding. Count a phrase you can comfortably repeat and press Loop on its next downbeat.</p></div>
+                </section>
+
+                <section class="manual-section" id="panel" data-keywords="diagram layout knobs buttons keyboard joystick rollerball turntable purple yellow led colours colors">
+                    <p class="section-number">02 / Front panel</p>
+                    <h2>Meet the controls</h2>
+                    <p>Read the panel with the piano keys along the bottom. The four yellow buttons run <strong>Transport → Instrument → Mode → Quantise</strong> from left to right. In this guide, “hold + tap” means keep the first control held while pressing the second.</p>
+                    <figure class="diagram"><a href="assets/panel.svg" aria-label="Open the panel diagram at full size"><img src="assets/panel.svg" width="1040" height="660" alt="Schematic front panel with eight piano keys below four yellow buttons, two central knobs, a purple Loop button, orange turntable, joystick and rollerball. The numbered controls are explained below."></a><figcaption>Original schematic, with a simplified case and controls. <a href="assets/panel.svg">Open diagram at full size ↗</a></figcaption></figure>
+                    <dl class="control-list">
+                        <div><dt>01 / Piano keys</dt><dd>Play notes in Play mode; switch channels on and off in Channel mode. With a modifier held, select an instrument, loop length, or quantisation grid.</dd></div>
+                        <div><dt>02 / Purple Loop button</dt><dd>Arm a note recording and finish a take. Also works with Transport for full-loop notes and Instrument for audio sampling. Holding it clears material; see <a href="#performance">clearing</a>.</dd></div>
+                        <div><dt>03 / Left knob</dt><dd>Turn for selected-channel volume; click for stop/start. Hold Transport while turning for global tempo. Hold Instrument while turning for the selected melodic channel’s octave.</dd></div>
+                        <div><dt>04 / Right knob</dt><dd>Turn to set the selected effect amount. Click to alternate between the two parameters in a joystick direction. Hold Instrument while turning to change the melodic root note.</dd></div>
+                        <div><dt>05 / Joystick</dt><dd>Hold a direction to engage its effects. Turn the right knob to adjust them. Return to centre to restore the resting values, unless you have latched them.</dd></div>
+                        <div><dt>06 / Rollerball</dt><dd>Press for a master backspin on the recent mix, returning to live audio at the next bar. This needs the backspin firmware and sound-engine configuration; see <a href="#performance">performance</a>.</dd></div>
+                        <div><dt>07 / Orange turntable</dt><dd>Its switch resets the session. Modifier combinations give it more selective reset and note-off actions. Treat an unmodified press as destructive.</dd></div>
+                        <div><dt>08 / Yellow buttons</dt><dd>Transport, Instrument, and Quantise modify other controls while held. Mode switches between playing notes and switching channels.</dd></div>
+                    </dl>
+                    <h3>Read the left-knob light</h3>
+                    <div class="table-wrap"><table><thead><tr><th scope="col">Colour</th><th scope="col">Transport state</th></tr></thead><tbody><tr><td>Blue</td><td>Stopped</td></tr><tr><td>Red</td><td>Recording notes</td></tr><tr><td>Green</td><td>Playing</td></tr><tr><td>Magenta on both knobs</td><td>Instrument modifier held: octave and root-note controls</td></tr></tbody></table></div>
+                    <p>The purple button lights when note recording is armed and also gives loop-position feedback during playback. Key LEDs show notes in Play mode and enabled channels in Channel mode.</p>
+                </section>
+
+                <section class="manual-section" id="channels" data-keywords="instrument select sound change drums synth 303 vocal recorded loops mute bank">
+                    <p class="section-number">03 / Sound sources</p>
+                    <h2>Eight instruments, one keyboard</h2>
+                    <p><strong>Hold <kbd>Instrument</kbd> + tap piano <kbd>1</kbd>–<kbd>8</kbd></strong> to select a channel. Release the modifier before playing. Selection changes which channel the knobs and keyboard control; it does not stop the other channels.</p>
+                    <div class="table-wrap"><table><caption>Player-facing channel numbers are 1–8. Firmware indexes are 0–7.</caption><thead><tr><th scope="col">Key</th><th scope="col">Instrument</th><th scope="col">How it plays</th><th scope="col">Recording default</th></tr></thead><tbody>
+                        <tr><td>1 · 2</td><td>Drums 1 · 2</td><td>Eight drum voices, one per piano key.</td><td>Overdub</td></tr>
+                        <tr><td>3 · 4</td><td>Loops 1 · 2</td><td>Eight equal slices of a selected sample. Sample playback follows loop timing.</td><td>Overdub</td></tr>
+                        <tr><td>5 · 6</td><td>Sampled synths 1 · 2</td><td>A selected sample pitched across a scale; natural minor at startup.</td><td>Replace the recorded region</td></tr>
+                        <tr><td>7</td><td>303 synth</td><td>An acid-style synth with its own instrument-effects map.</td><td>Overdub</td></tr>
+                        <tr><td>8</td><td>Recorded / Vocal</td><td>Live-captured audio or loaded vocal samples, split into eight slices.</td><td>Overdub</td></tr>
+                    </tbody></table></div>
+                    <h3>Change the selected sound</h3>
+                    <p>On the backspin firmware, hold <kbd>Instrument</kbd> and <strong>click the <kbd>Left knob</kbd></strong>. Each click advances the sound choice for the selected sampler channel. It changes the drum-kit selection, loop, synth sample, or recorded sample; the 303 uses its synthesis controls instead.</p>
+                    <p>Sound lists are shuffled when loaded, so a fixed sound number does not identify the same sample after every restart. The controller’s session reset preserves the sound-choice values and selected channel.</p>
+                    <div class="callout"><p><strong>Two keyboard modes.</strong> Tap <kbd>Mode</kbd> to enter Channel mode, where keys toggle channels. Tap it again to return to Play mode. Channel mode also selects the instrument-effects bank; Play mode selects the mix-effects bank.</p></div>
+                    <p>Turning off a drum, synth, or 303 channel stops its sequenced notes. Loop and recorded channels are muted at the audio output, so their position can continue underneath. Turning a channel off preserves its recorded notes.</p>
+                </section>
+
+                <section class="manual-section" id="recording" data-keywords="arm take freeze window overdub overwrite replace sustain silence record notes loop">
+                    <p class="section-number">04 / Note looping</p>
+                    <h2>Building a recording</h2>
+                    <p class="intro">The sequencer remembers your key presses and releases. ToySampler turns those notes into sound. Recording notes and sampling incoming audio are separate actions.</p>
+                    <h3>Arm → play → keep</h3>
+                    <p>Tap <kbd>Loop</kbd> to arm. The first note starts capture on its channel; waiting before that note does not replace existing material. Tapping Loop again before you play cancels arming. Once recording has started, tap Loop to keep the take and return to playback.</p>
+                    <p>When you finish while holding a key, the live note ends at the button press. Release and press the key again to play another live note.</p>
+                    <figure class="diagram"><img src="assets/recording.svg" width="1000" height="290" alt="First loop timeline: arming is followed by waiting; the first note starts capture; the Loop-button press ends the phrase and playback starts. Only the interval from the first note to the finish press sets the base loop."><figcaption>The first loop measures your phrase from its first note to the finish press. Later takes use the existing transport length.</figcaption></figure>
+                    <h3>Overdub or replace</h3>
+                    <p><strong>Drums, loops, 303, and recorded audio channels overdub:</strong> new notes are added to stored notes. <strong>The two sampled-synth channels replace:</strong> the part of the old loop covered by the new take is replaced, including rests. The remainder stays. An older overlapping note of the same pitch on that channel is removed as a whole.</p>
+                    <h3>Long takes and the rolling window</h3>
+                    <p>Once a base loop exists, capture retains up to the current transport length. If you keep playing beyond that, older material falls out of the retained window.</p>
+                    <p>At a whole transport-length boundary measured from the take’s first note, recording can <strong>freeze when all keys are released</strong>. Your phrase then waits without being erased by continued silence. Press Loop to keep it. Playing again resumes capture, includes the elapsed silent gap, and establishes a new boundary anchor. Held keys prevent freezing; stored note lengths are limited to one loop.</p>
+                    <div class="callout attention"><p><strong>Finish before changing length or stopping.</strong> A transport-length change during a take discards that unfinished take and re-arms at the new length. Stop also discards unfinished capture. Stored loops remain.</p></div>
+                </section>
+
+                <section class="manual-section" id="timing" data-keywords="tempo bpm transport length quantise quantize triplet grid fill sustained clock">
+                    <p class="section-number">05 / Shared time</p>
+                    <h2>Loop length, tempo &amp; quantise</h2>
+                    <h3>Extend the transport</h3>
+                    <p>After your first loop, hold <kbd>Transport</kbd> and tap a piano key to choose a multiple of that base loop. This gives you room for a longer phrase while shorter recorded parts keep repeating.</p>
+                    <div class="key-row" role="list" aria-label="Transport length by piano key"><div role="listitem"><b>1</b><span>1×</span></div><div role="listitem"><b>2</b><span>2×</span></div><div role="listitem"><b>3</b><span>4×</span></div><div role="listitem"><b>4</b><span>8×</span></div><div role="listitem"><b>5</b><span>16×</span></div><div role="listitem"><b>6</b><span>32×</span></div><div role="listitem"><b>7</b><span>64×</span></div><div role="listitem"><b>8</b><span>128×</span></div></div>
+                    <p>The length becomes part of a channel’s timing when you finish its take. Resizing the transport does not erase saved notes; shortening can hide later notes, and growing it can expose them again. Selecting a length before any base loop exists has no effect.</p>
+                    <h3>Change the pace</h3>
+                    <p>Hold <kbd>Transport</kbd> and turn the <kbd>Left knob</kbd> for global tempo. Its neutral value uses the pace of your original recording; the control ranges from half speed to almost double speed. Loop and recorded-sample playback also changes speed and pitch with tempo.</p>
+                    <h3>Snap the selected channel’s attacks</h3>
+                    <p>Hold <kbd>Quantise</kbd> and tap a piano key. The numbers below are <strong>equal divisions of that channel’s loop</strong>, rather than fixed beat-note names. Quantisation starts off and preserves the captured timing, so choosing Off restores the original feel.</p>
+                    <div class="key-row" role="list" aria-label="Quantisation grid by piano key"><div role="listitem"><b>1</b><span>12</span></div><div role="listitem"><b>2</b><span>24</span></div><div role="listitem"><b>3</b><span>48</span></div><div role="listitem"><b>4</b><span>8</span></div><div role="listitem"><b>5</b><span>16</span></div><div role="listitem"><b>6</b><span>32</span></div><div role="listitem"><b>7</b><span>64</span></div><div role="listitem"><b>8</b><span>Off</span></div></div>
+                    <h3>Make one note fill the loop</h3>
+                    <p>With normal note recording unarmed, hold <kbd>Transport</kbd> and tap <kbd>Loop</kbd> to arm a full-loop note. Release Transport, then play a note: it is stored from the channel-loop start for the whole loop duration. The command is a toggle, so the same combination cancels it before a note is played. With no existing loop, it uses a six-second base loop.</p>
+                    <p>Use full-loop notes for sustained loop samples. The audible duration still depends on the sound: a one-shot drum does not become a continuous tone.</p>
+                </section>
+
+                <section class="manual-section" id="sampling" data-keywords="microphone input vocal record audio capture recorded sample slots save memory">
+                    <p class="section-number">06 / Incoming audio</p>
+                    <h2>Make the outside world a sound</h2>
+                    <p class="intro">Channel 8 is the recorded-audio instrument. Capture an incoming signal, then play its eight slices from the keyboard.</p>
+                    <ol class="steps">
+                        <li><strong>Set up the source.</strong><p>Feed audio to the sound engine’s configured input. Select channel <kbd>8</kbd> with <kbd>Instrument</kbd> + piano <kbd>8</kbd>. Make a note loop first if you want the sample length to follow your own timing.</p></li>
+                        <li><strong>Start sampling.</strong><p>Hold <kbd>Instrument</kbd> and tap <kbd>Loop</kbd>, then release the modifier. Audio capture always targets channel 8, even if another channel was selected.</p></li>
+                        <li><strong>Stop sampling.</strong><p>Tap <kbd>Loop</kbd> on its own. This requests the end of audio capture; it does not arm a note take while the controller’s audio-recording state is on. Instrument + Loop also toggles capture off.</p></li>
+                        <li><strong>Play what you captured.</strong><p>Allow the sound engine to complete the capture. It selects the new sample and divides it into eight equal slices. In Play mode, use the piano keys to trigger them. You can then record those key presses as a sequenced part.</p></li>
+                    </ol>
+                    <div class="callout"><p><strong>The stop is loop-based.</strong> The recorder finalises at a base-loop multiple measured from the start of capture. This is separate from pressing Loop to finish a note take, which finishes immediately.</p></div>
+                    <p>ToySampler has 16 reusable live-recording buffers, each sized for up to 60 seconds. Captures are normalised when finished. These buffers are held in memory and reused as you record more; there is no panel command to save a recording to disk. Keep an external recording of a performance you want to retain.</p>
+                    <p>The audio input comes from the host’s routing. The toy’s original microphone and speaker are not a guarantee of the current audio connections. If a capture is silent, check the sound-engine input and routing.</p>
+                </section>
+
+                <section class="manual-section" id="effects" data-keywords="fx shift joystick compressor gate delay reverb overdrive reverse repeat filter akai pitch grain 303 sticky latch bypass">
+                    <p class="section-number">07 / Shape the sound</p>
+                    <h2>Joystick &amp; effects</h2>
+                    <p>Each direction has a pair of parameters. <strong>Hold the joystick direction and turn the <kbd>Right knob</kbd></strong> to adjust the selected parameter. Click the right knob to select the other member of the pair. The shift selection stays in place after you release the knob button.</p>
+                    <p>For pairs of continuous parameters, both engage while the joystick is held. The knob changes one at a time. Repeat and Reverse are selected separately because Reverse is an on/off effect.</p>
+                    <div class="callout"><p><strong>Mode chooses the bank.</strong> Play mode uses mix effects (Set B). Channel mode uses sampler or 303 effects (Set A). Tap <kbd>Mode</kbd> to switch. These maps are a reference; selecting a map here does not control the instrument.</p></div>
+                    <div class="bank-tabs enhancement" hidden role="group" aria-label="View an effects map"><button type="button" data-bank="bank-play" aria-pressed="true" aria-controls="bank-play">Play / mix</button><button type="button" data-bank="bank-sampler" aria-pressed="false" aria-controls="bank-sampler">Channel / sampler</button><button type="button" data-bank="bank-303" aria-pressed="false" aria-controls="bank-303">Channel / 303</button></div>
+
+                    <div class="bank-panel" id="bank-play">
+                        <h3>Play mode · Mix effects · Set B</h3>
+                        <p class="bank-summary">All eight channels. First line: normal selection. Second line: shifted selection.</p>
+                        <div class="bank-map" role="group" aria-label="Mix effects by joystick direction"><div class="up"><b>↑ Up</b><span>Gate threshold</span><small>Shift: Gate release</small></div><div class="left"><b>← Left</b><span>Compressor input</span><small>Shift: Compressor ratio</small></div><div class="center" aria-hidden="true">✛</div><div class="right"><b>Right →</b><span>Dub delay mix</span><small>Shift: Reverb mix</small></div><div class="down"><b>↓ Down</b><span>Overdrive drive</span><small>Shift: Overdrive muffle</small></div></div>
+                        <p>Use compression to reshape dynamics, the gate for a tighter tail, and overdrive for distortion. The right-hand pair adds delay and reverb. Their audio processing comes from the effects in the sound engine’s host configuration.</p>
+                    </div>
+                    <div class="bank-panel" id="bank-sampler">
+                        <h3>Channel mode · Sampler effects · Set A</h3>
+                        <p class="bank-summary">Channels 1–6 and 8. In this mode piano keys switch channels; existing loops keep playing.</p>
+                        <div class="bank-map" role="group" aria-label="Sampler effects by joystick direction"><div class="up"><b>↑ Up</b><span>Akai pitch</span><small>Shift: Grain size</small></div><div class="left"><b>← Left</b><span>Filter cutoff</span><small>Shift: Filter modulation</small></div><div class="center" aria-hidden="true">✛</div><div class="right"><b>Right →</b><span>Playback pitch / speed</span><small>Shift: Akai time</small></div><div class="down"><b>↓ Down</b><span>Beat repeat speed</span><small>Shift: Reverse on/off</small></div></div>
+                        <p><strong>Akai pitch and time</strong> use grain-based processing to change pitch and timing separately; grain size changes the texture. Playback pitch/speed changes both together. On loop and recorded channels, time and playback-speed controls use clean ratios: ¼×, ½×, 1×, 2×, and 4×.</p>
+                        <p><strong>Beat repeat</strong> engages while Down is held with Repeat selected; turn the knob for repeat speed. With the shifted Down selection, Reverse engages instead. Reverse is binary, so turning the knob does not change its amount.</p>
+                    </div>
+                    <div class="bank-panel" id="bank-303">
+                        <h3>Channel mode · 303 effects · Set A</h3>
+                        <p class="bank-summary">Channel 7 only. Select it with Instrument + piano 7.</p>
+                        <div class="bank-map" role="group" aria-label="303 effects by joystick direction"><div class="up"><b>↑ Up</b><span>Resonance</span><small>Shift: Accent</small></div><div class="left"><b>← Left</b><span>Filter cutoff</span><small>Shift: Decay</small></div><div class="center" aria-hidden="true">✛</div><div class="right"><b>Right →</b><span>Waveform</span><small>Shift: Filter type</small></div><div class="down"><b>↓ Down</b><span>Envelope modulation</span><small>Shift: Tuning</small></div></div>
+                        <p>Start with cutoff and resonance, then shape the attack with envelope modulation, decay, and accent. Use Play mode for the same mix-effects bank as the other channels.</p>
+                    </div>
+
+                    <h3>Keep an effect after releasing the joystick</h3>
+                    <p>While holding a direction, adjust the effect, then tap <kbd>Quantise</kbd> before releasing the joystick. This stores the pair’s current amounts as its resting values. For a binary effect, only the selected member is latched. Repeat-enable latching depends on firmware; see the version note below.</p>
+                    <p>To clear the selected resting value, hold that joystick direction and <kbd>Quantise</kbd>, then click the <kbd>Right knob</kbd>. To clear <strong>all resting values in the current channel’s current bank</strong>, centre the joystick, hold Quantise, and click the right knob.</p>
+                    <p>The remembered active amounts remain available for the next gesture. Clearing resting values is different from resetting the whole session.</p>
+                    <h3>Right-knob colours</h3>
+                    <p>Normal directions: <strong>Left red · Up green · Right blue · Down white.</strong> Shifted directions: <strong>Left magenta · Up yellow · Right cyan · Down unlit.</strong> An unlit shifted-Down indicator can therefore be normal.</p>
+                </section>
+
+                <section class="manual-section" id="scales" data-keywords="tonic root key octave pitch melodic natural minor pentatonic phrygian dorian">
+                    <p class="section-number">08 / Melodic playing</p>
+                    <h2>Find a scale, move the root</h2>
+                    <p>The sampled synths and 303 start in natural minor. Hold <kbd>Instrument</kbd> to use the knobs and joystick as melodic controls:</p>
+                    <div class="table-wrap"><table><thead><tr><th scope="col">While Instrument is held</th><th scope="col">Result</th></tr></thead><tbody><tr><td>Turn Left knob</td><td>Change the selected melodic channel’s octave.</td></tr><tr><td>Turn Right knob</td><td>Change the root within the octave across all channels whose scales are editable.</td></tr><tr><td>Joystick Left</td><td>Natural minor</td></tr><tr><td>Joystick Down</td><td>Minor pentatonic</td></tr><tr><td>Joystick Right</td><td>Phrygian</td></tr><tr><td>Joystick Up</td><td>Dorian</td></tr></tbody></table></div>
+                    <p>Scale selection also applies across all editable melodic channels. Drums, loops, and recorded audio have fixed chromatic mappings, so these changes leave their voice and slice assignments intact. Changing a scale or root affects new playing; it does not transpose notes already stored in the sequencer.</p>
+                </section>
+
+                <section class="manual-section" id="performance" data-keywords="stop start clear delete reset turntable scratch spinback backspin rollerball panic silence mute">
+                    <p class="section-number">09 / Live moves</p>
+                    <h2>Bring parts in. Take them out.</h2>
+                    <h3>Switch channels without erasing them</h3>
+                    <p>Tap <kbd>Mode</kbd> for Channel mode. Each piano key toggles its corresponding instrument on or off; lit keys show enabled channels. Turn the left knob for the selected channel’s level. Tap Mode again to play notes.</p>
+                    <h3>Pull the mix backwards</h3>
+                    <p>On the backspin setup, press the <kbd>Rollerball</kbd> while the transport is running. ToySpinBack pulls the recent master mix backwards and slows it towards a stop, then hands back to the live mix at the next bar. The instruments and sequencer keep running underneath.</p>
+                    <p>The effect acts on the whole mix. Repeated presses during an active backspin are ignored, and it does nothing while stopped. It requires ToySpinBack and the matching host routing; older firmware uses the rollerball press to change sounds instead.</p>
+                    <h3>Clear deliberately</h3>
+                    <div class="table-wrap"><table><thead><tr><th scope="col">Gesture</th><th scope="col">Result</th></tr></thead><tbody>
+                        <tr><td>Hold purple Loop</td><td>Invokes clear after roughly half a second. In recording state this discards the unfinished take; otherwise it clears the selected channel’s stored notes. If no stored notes remain, the sequencer resets.</td></tr>
+                        <tr><td>Press orange Turntable</td><td>Reset the whole note session, transport, mixer, effects, and channel defaults. Selected channel and sound-choice values are preserved.</td></tr>
+                        <tr><td>Hold Mode + press Turntable</td><td>Clear and restore defaults for the channels currently switched off. Mode changes as soon as you press it, so check the lit channel keys before pressing the turntable.</td></tr>
+                        <tr><td>Hold Instrument + press Turntable</td><td>Send All Notes Off to the selected channel. This ends sounding notes without deleting the sequence; playback can trigger them again.</td></tr>
+                    </tbody></table></div>
+                    <div class="callout attention"><p><strong>Loop reacts on press, then on hold.</strong> A long press is not a separate delayed gesture: its initial press still arms or finishes a take before the hold-clear action. There is no undo for cleared notes.</p></div>
+                </section>
+
+                <section class="manual-section" id="shortcuts" data-keywords="cheat sheet commands reference combination shortcut control">
+                    <p class="section-number">10 / Keep beside you</p>
+                    <h2>The quick reference</h2>
+                    <div class="table-wrap"><table><thead><tr><th scope="col">Do this</th><th scope="col">To get this</th></tr></thead><tbody>
+                        <tr><td>Instrument + piano 1–8</td><td>Select instrument channel.</td></tr>
+                        <tr><td>Instrument + Left-knob click</td><td>Next sampler sound, on backspin firmware.</td></tr>
+                        <tr><td>Purple Loop</td><td>Arm/cancel arming; finish a running note take; request stop if audio capture is active.</td></tr>
+                        <tr><td>Left-knob click</td><td>Stop / restart from the beginning, once the sequencer has a loop.</td></tr>
+                        <tr><td>Turn Left knob</td><td>Selected channel’s volume.</td></tr>
+                        <tr><td>Transport + turn Left knob</td><td>Global tempo.</td></tr>
+                        <tr><td>Transport + piano 1–8</td><td>Transport length: 1, 2, 4, 8, 16, 32, 64, 128 base loops.</td></tr>
+                        <tr><td>Transport + Loop, then a note</td><td>Store one full-loop note.</td></tr>
+                        <tr><td>Instrument + Loop</td><td>Toggle audio capture on channel 8.</td></tr>
+                        <tr><td>Mode</td><td>Play + mix effects ↔ Channel on/off + instrument effects.</td></tr>
+                        <tr><td>Hold joystick + turn Right knob</td><td>Engage a direction’s effect and set its amount.</td></tr>
+                        <tr><td>Right-knob click</td><td>Toggle the selected parameter within a direction’s pair.</td></tr>
+                        <tr><td>Hold joystick, then tap Quantise</td><td>Latch current effect amounts as resting values.</td></tr>
+                        <tr><td>Quantise + Right-knob click</td><td>Reset current bank’s resting values on the selected channel; with joystick held, reset only the selected parameter.</td></tr>
+                        <tr><td>Quantise + piano 1–8</td><td>Grid divisions: 12, 24, 48, 8, 16, 32, 64, Off.</td></tr>
+                        <tr><td>Instrument + turn Left / Right knob</td><td>Selected melodic octave / shared melodic root.</td></tr>
+                        <tr><td>Instrument + joystick</td><td>Shared melodic scale: Left minor, Down pentatonic, Right Phrygian, Up Dorian.</td></tr>
+                        <tr><td>Rollerball press</td><td>Master backspin, with the matching firmware and sound engine.</td></tr>
+                        <tr><td>Hold Loop / press Turntable</td><td>Clear selected material / reset session. <a href="#performance">Read the clearing details first.</a></td></tr>
+                    </tbody></table></div>
+                </section>
+
+                <section class="manual-section" id="troubleshooting" data-keywords="silent quiet no sound not working wrong effects boot restore troubleshooting help">
+                    <p class="section-number">11 / Get back to playing</p>
+                    <h2>Something quiet?</h2>
+                    <details class="help"><summary>The piano keys switch lights but do not play notes.</summary><p>You are probably in Channel mode. Tap Mode to return to Play mode, and release any modifier buttons. Select an instrument with Instrument + a piano key.</p></details>
+                    <details class="help"><summary>I can play live, but the loop is silent.</summary><p>Click the left knob if stopped. Check the channel is on in Channel mode, its volume is up, and a take was finished with Loop. Shortening the transport can also hide saved notes that start outside the shorter length.</p></details>
+                    <details class="help"><summary>The entire instrument is silent.</summary><p>Wait for startup to finish. Check your listening level and audio connections, enable a channel, and raise its volume. If needed, check that the sound engine is running and receiving MIDI. The Arduino controls and the audio engine are separate parts of the instrument.</p></details>
+                    <details class="help"><summary>The joystick changes the wrong thing.</summary><p>Check Mode first: Play uses mix effects, Channel uses sampler or 303 effects. Then check the right-knob shift selection. Release Instrument to leave scale selection. Clear latched effects with Quantise + a right-knob click at joystick centre.</p></details>
+                    <details class="help"><summary>The effect disappears when I let go.</summary><p>That is the normal momentary gesture. While the joystick is still held, tap Quantise to latch its resting values. Some older firmware does not preserve Repeat’s enable state when latching, even though it remembers the speed.</p></details>
+                    <details class="help"><summary>The recording kept waiting, or my take changed.</summary><p>Arming waits for the first note. Later takes can freeze at their loop-length boundary when no keys are held; they still need Loop to be kept. Playing again resumes capture and includes elapsed silence. Changing transport length during a take discards it and re-arms.</p></details>
+                    <details class="help"><summary>My new audio sample is silent.</summary><p>Check the audio engine’s configured input and its level. Audio sampling is Instrument + Loop, distinct from note recording. Request a stop, allow capture to finalise at its loop multiple, select channel 8, and return to Play mode.</p></details>
+                    <details class="help"><summary>The rollerball changes sounds instead of doing a backspin.</summary><p>You have the earlier control mapping. That version uses rollerball press for sound advance. The newer mapping moves sound advance to Instrument + a left-knob click and reserves rollerball press for ToySpinBack. The matching master effect and routing must also be installed.</p></details>
+                    <details class="help"><summary>A note is stuck.</summary><p>Hold Instrument and press Turntable to send All Notes Off to the selected channel. Release the keys before playing again. If the sequencer is running it can trigger saved notes again; stop with a left-knob click when needed.</p></details>
+                </section>
+
+                <section class="manual-section" id="about" data-keywords="firmware version sources toysampler toysequencer elk sushi samples loading wav technical">
+                    <p class="section-number">12 / Under the lid</p>
+                    <h2>One instrument, two working halves</h2>
+                    <p><strong>ToySequencer</strong> reads the physical controls, records notes, maintains the loop clock, and sends MIDI. <strong>ToySampler</strong> supplies drum, loop, pitched-sample, and recorded-audio playback. The 303 and mix effects run alongside it in the audio host. ToySpinBack is the optional master backspin effect.</p>
+                    <details class="help"><summary>Preparing a sample library</summary><p>The sampler reads WAV files from its configured DrumPath, LoopPath, SynthPath, and VocalPath folders. DrumPath contains Kick, Snare, Clap, Tom, Hi-Hat, Cymbal, and Other subfolders; both Tom voices read the Tom folder. Use mono or stereo WAV files shorter than 60 seconds and match the audio-engine sample rate: the supplied Elk configuration uses 48 kHz. Loaded samples are normalised and their ordering is shuffled. Folder paths belong to the host/plugin setup, rather than a panel menu.</p></details>
+                    <details class="help"><summary>Firmware and manual versions</summary><p>This edition follows the inspected ToySequencer checkout with Instrument + left-knob sound selection and rollerball backspin, together with ToySampler and its Elk/Sushi configuration. The older master mapping assigns sound advance to the rollerball. Repeat-enable latching also differs between inspected branches. Backspin requires the matching ToySpinBack plugin and host configuration; its presence in source does not confirm what is installed on a particular instrument.</p></details>
+                    <p class="source-note">Prepared 26 October 2026. Control reference: ToySequencer <code>49b2b71</code>; bundled ToySampler <code>240bcf2</code>, cross-checked with the standalone ToySampler checkout <code>ee53283</code>. Physical yellow-button order confirmed by the instrument’s owner. Diagrams are original vector drawings.</p>
+                </section>
+            </div>
+            <footer class="footer"><span>egc1 / Instrument manual</span><a href="#main">Back to the beginning ↑</a><a href="mailto:will@egc.one">will@egc.one</a></footer>
+        </main>
+    </div>
+</body>
+</html>
