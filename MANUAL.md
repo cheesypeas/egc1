@@ -6,8 +6,7 @@ serves it at `https://egc.one/manual/`. Keep the existing `CNAME` and hosting se
 
 Edit the HTML for content, `manual/manual.css` for presentation, and
 `manual/manual.js` for search, bank selection, and print behaviour. The manual
-works without JavaScript: all sections and effects maps remain available. Fonts
-have local fallbacks. No package installation or build is needed.
+works without JavaScript: all sections and effects tables remain available. The manual uses system fonts. No package installation or build is needed.
 
 The SVG panel and recording timeline in `manual/assets/` are original drawings.
 The supplied reference photo is deliberately not included. Yellow-button order
@@ -49,7 +48,7 @@ behaviour, and effect routing.
 ## Verification
 
 Check both narrow and wide layouts, local links and SVG XML, search (including
-no results and clearing), all three effects maps, contents navigation, and
-Print / PDF. Printing should include filtered-out sections, every effects map,
+no results and clearing), all three effects tables, contents navigation, and
+Print / PDF. Printing should include filtered-out sections, every effects table,
 and expanded troubleshooting answers. Keep original source/photo files out of
 the public asset directory.
