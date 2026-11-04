@@ -1,0 +1,11 @@
+# Local development and user audio must never become website assets.
+node_modules/
+*.onnx
+*.wav
+*.aif
+*.aiff
+*.flac
+*.ogg
+.toysampler/
+__pycache__/
+.playwright/

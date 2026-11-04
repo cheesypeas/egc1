@@ -1,0 +1,7 @@
+# Preserve upstream source bytes and keep generated/vendor files out of review diffs.
+classifier/native/aubio/** linguist-vendored -whitespace
+classifier/native/include/** linguist-vendored -whitespace
+classifier/native/third_party/** linguist-vendored -whitespace
+classifier/vendor/** linguist-vendored -whitespace
+classifier/prototypes.json linguist-generated
+classifier/mel-filters.json linguist-generated
