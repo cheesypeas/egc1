@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "runtime": "onnxruntime-web@1.22.0",
+  "analysis": "toysampler-wasm-v1",
+  "models": {
+    "audio": {
+      "name": "Sound classifier",
+      "bytes": 117528416,
+      "sha256": "a1c2b43c44f71e0fa841a4b86700886c199bf87699ea45632c4d831bc6c88957",
+      "url": "https://huggingface.co/Xenova/clap-htsat-unfused/resolve/c28f2883575e590e04d3146ff0713c2448d691ba/onnx/audio_model.onnx",
+      "localName": "audio_model.onnx"
+    },
+    "beat": {
+      "name": "Loop timing",
+      "bytes": 83077778,
+      "sha256": "c5c1466e08abdb03fdeb50668a06f244b787d564c212490482231a9cfbe9ccbd",
+      "url": "https://raw.githubusercontent.com/mosynthkey/beat_this_cpp/07ab790a9ec2eda8093d52d249e3ec4f0510ee72/onnx/beat_this.onnx",
+      "localName": "toy-beat-this.onnx"
+    }
+  }
+}
