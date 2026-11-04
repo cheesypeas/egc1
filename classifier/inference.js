@@ -98,7 +98,7 @@ export class Inference {
         const offsets = [...new Set([0, Math.max(0, Math.floor((mono.length - maximum) / 2)), Math.max(0, mono.length - maximum)])].sort((a, b) => a - b);
         const vectors = [];
         for (let crop = 0; crop < offsets.length; crop++) {
-            this.emit({type: 'stage', stage: `Listening to sample${offsets.length > 1 ? ` (${crop + 1}/${offsets.length})` : ''}`});
+            this.emit({type: 'stage', stage: `Classifying sample${offsets.length > 1 ? ` (${crop + 1}/${offsets.length})` : ''}`});
             const part = mono.subarray(offsets[crop], offsets[crop] + maximum);
             let wave = part;
             if (part.length < maximum) {

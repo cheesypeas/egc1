@@ -130,7 +130,7 @@ $('#run').addEventListener('click', () => {
     notice('');
     if (!paused) { rows.clear(); analyses.clear(); report = null; }
     done = 0; within = 0; total = 0;
-    $('#processing').hidden = false; $('#stage').textContent = 'finding your samples'; $('#current-file').textContent = folderName;
+    $('#processing').hidden = false; $('#stage').textContent = 'scanning sample files'; $('#current-file').textContent = folderName;
     $('#progress-count').textContent = 'scanning folders…'; $('#progress-percent').textContent = '—'; $('#progress-fill').style.width = '0%';
     $('#accessible-progress').value = 0; $('#export-metadata').hidden = true; $('#download').hidden = true;
     setRunning(true); setSteps('process');
@@ -190,7 +190,7 @@ async function receive(data) {
         for (const row of data.rows) { rows.set(row.path, {...rows.get(row.path), ...row}); }
         setRunning(false); paused = data.type === 'paused'; $('#download').hidden = true;
         $('#run').textContent = paused ? 'resume processing →' : 'run again →';
-        $('#stage').textContent = paused ? 'paused · your progress is saved' : report.failures.length ? 'finished · some files need attention' : 'your samples are ready';
+        $('#stage').textContent = paused ? 'paused · your progress is saved' : report.failures.length ? 'finished · some files need attention' : 'processing complete';
         $('#progress-summary').textContent = handle ? 'Metadata saved in .toysampler alongside your audio.' : 'Download the metadata ZIP and extract it into your sample folder.';
         $('#export-metadata').hidden = Boolean(handle) || outputs.size === 0;
         $('#results').hidden = false;
@@ -290,7 +290,7 @@ function download(blob, name) {
     link.click(); setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
 $('#export-report').addEventListener('click', () => {
-    download(new Blob([JSON.stringify({...report, results: [...rows.values()].map(({cached, feedback, ...row}) => row)}, null, 2) + '\n'], {type: 'application/json'}), 'sample-lab-report.json');
+    download(new Blob([JSON.stringify({...report, results: [...rows.values()].map(({cached, feedback, ...row}) => row)}, null, 2) + '\n'], {type: 'application/json'}), 'sample-processing-report.json');
 });
 $('#export-metadata').addEventListener('click', async () => {
     const button = $('#export-metadata'); button.disabled = true;

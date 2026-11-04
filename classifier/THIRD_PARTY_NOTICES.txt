@@ -1,4 +1,4 @@
-SAMPLE LAB — THIRD-PARTY NOTICES
+SAMPLE PROCESSOR — THIRD-PARTY NOTICES
 
 The WebAssembly analysis binary links aubio (GPL-3.0-or-later). Its complete
 corresponding analysis source, adapter and rebuild script are provided in

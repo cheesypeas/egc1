@@ -1,4 +1,4 @@
-# Sample Lab
+# Sample processor
 
 A buildless, browser-only ToySampler library preparer at `/classifier/`.
 No server, account, package installation or local helper is needed by users.
