@@ -52,6 +52,7 @@
                 </fieldset>
                 <div class="setup-bottom">
                     <p><span class="status-dot dim" id="folder-status-dot"></span><span id="folder-status">no folder selected</span></p>
+                    <button type="button" class="button quiet" id="open-review" disabled>review prepared samples</button>
                     <button type="button" class="button primary run-button" id="run" disabled>prepare samples <span aria-hidden="true">→</span></button>
                 </div>
                 <details class="advanced"><summary>more options</summary><label><input type="checkbox" id="force"> reanalyse existing audio <span>— slower; saved manual labels and review marks are retained</span></label><p>The models download when first needed (about 113 MiB for classification, plus 80 MiB for loop timing) and are kept in browser storage where available. Keep this page open while processing.</p></details>
@@ -83,7 +84,7 @@
                     <p class="empty-results" id="empty-results" hidden>No sounds match this filter.</p>
                     <div class="table-footer"><span id="showing">0 sounds</span><div><button type="button" class="page-button" id="previous-page" aria-label="Previous page">←</button><span id="page-label">1 / 1</span><button type="button" class="page-button" id="next-page" aria-label="Next page">→</button></div></div>
                 </div>
-                <p class="results-note" id="results-note">Categories are suggestions. Listen to a sound and correct its category if needed.</p>
+                <p class="results-note" id="results-note">Categories are suggestions. Open detailed review for issue checkboxes, waveform marks, loop joins and instrument attention flags.</p>
                 <details class="log-panel"><summary>processing details <span id="log-count"></span></summary><ol id="event-log"></ol></details>
             </section>
 

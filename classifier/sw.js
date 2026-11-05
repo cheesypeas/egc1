@@ -1,5 +1,5 @@
-const CACHE = 'egc-sample-lab-shell-v4';
-const SHELL = ['./', './index.html', './style.css', './app.js', './audio.js', './taxonomy.js', './storage.js',
+const CACHE = 'egc-sample-lab-shell-v6';
+const SHELL = ['./review/', './review/index.html', './review/style.css', './review/app.js', './review/bootstrap.js', './review/library.js', './', './index.html', './style.css', './app.js', './audio.js', './taxonomy.js', './storage.js',
     './pipeline.js', './worker.js', './inference.js', './assets.json', './prototypes.json', './mel-filters.json',
     './about.html', '../egc1.png', './vendor/analysis.mjs', './vendor/analysis.wasm',
     './vendor/ort.wasm.min.mjs', './vendor/ort-wasm-simd-threaded.mjs', './vendor/ort-wasm-simd-threaded.wasm'];

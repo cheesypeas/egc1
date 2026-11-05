@@ -49,8 +49,9 @@ function folderSelected() {
     $('#folder-status').textContent = handle ? 'metadata will be saved to this folder' : 'metadata will be available as a ZIP download';
     $('#folder-status-dot').classList.remove('dim');
     $('#save-mode').textContent = handle ? 'SAVE TO FOLDER' : 'DOWNLOAD MODE';
+    $('#open-review').disabled = false;
     $('#run').disabled = false; $('#run').textContent = 'prepare samples →';
-    $('#folder-note').textContent = handle ? 'Only .toysampler metadata and derived audio are written. Your original files stay untouched.' :
+    $('#folder-note').textContent = handle ? 'Only .egc1 metadata and derived audio are written. Your original files stay untouched.' :
         'This browser cannot save directly to your folder. Download the metadata ZIP when finished, then extract it into this same folder.';
     notice(''); setSteps('choose');
 }
@@ -191,14 +192,14 @@ async function receive(data) {
         setRunning(false); paused = data.type === 'paused'; $('#download').hidden = true;
         $('#run').textContent = paused ? 'resume processing →' : 'run again →';
         $('#stage').textContent = paused ? 'paused · your progress is saved' : report.failures.length ? 'finished · some files need attention' : 'processing complete';
-        $('#progress-summary').textContent = handle ? 'Metadata saved in .toysampler alongside your audio.' : 'Download the metadata ZIP and extract it into your sample folder.';
+        $('#progress-summary').textContent = handle ? 'Metadata saved in .egc1 alongside your audio.' : 'Download the metadata ZIP and extract it into your sample folder.';
         $('#export-metadata').hidden = Boolean(handle) || outputs.size === 0;
         $('#results').hidden = false;
         done = report.completedFiles; within = 0;
         updateProgress(); render(); setSteps(paused ? 'process' : 'review');
         const status = paused ? 'Paused' : 'Finished';
         log(`${status}: ${number(report.readySamples)} sounds, ${number(report.reusedEmbeddings)} reused embeddings, ${number(report.failures.length)} failures.`);
-        if (!handle) { notice('Save your results: download the metadata ZIP, then extract its .toysampler folder into your selected sample folder.'); }
+        if (!handle) { notice('Save your results: download the metadata ZIP, then extract its .egc1 folder into your selected sample folder.'); }
         return;
     }
     if (data.type === 'corrected') {
@@ -297,7 +298,7 @@ $('#export-metadata').addEventListener('click', async () => {
     try {
         button.textContent = 'preparing ZIP…';
         const blob = await metadataZip(outputs, fraction => { button.textContent = `preparing ZIP · ${Math.floor(fraction * 100)}%`; });
-        download(blob, 'toysampler-metadata.zip'); notice('Extract the ZIP into the selected sample folder. It contains .toysampler metadata and derived sounds; no original audio is included.');
+        download(blob, 'egc1-metadata.zip'); notice('Extract the ZIP into the selected sample folder. It contains .egc1 metadata and derived sounds; no original audio is included.');
     } catch (error) { notice(error.message, true); }
     finally { button.disabled = false; button.textContent = 'download metadata ↓'; }
 });
@@ -335,7 +336,7 @@ async function selectSound(row, autoplay) {
         buffer = audioContext().createBuffer(channels.length, channels[0].length, info.rate);
         channels.forEach((channel, index) => { buffer.copyToChannel(channel, index); });
         let analysis = analyses.get(row.id);
-        if (!analysis) { analysis = await folder.json(`.toysampler/entries/${row.id}.json`); if (analysis) { analyses.set(row.id, analysis); } }
+        if (!analysis) { analysis = await folder.json(`.egc1/entries/${row.id}.json`); if (analysis) { analyses.set(row.id, analysis); } }
         if (seq !== previewSequence) { return; }
         playEnd = row.tags.includes('loops') && analysis?.loop?.loopEndSample > 0 ? Math.min(buffer.duration, analysis.loop.loopEndSample / info.rate) : buffer.duration;
         $('#player-play').disabled = false; $('#player-time').textContent = `0.00 / ${playEnd.toFixed(2)}`;
@@ -430,3 +431,13 @@ if ('serviceWorker' in navigator && !new URLSearchParams(location.search).has('n
     });
     navigator.serviceWorker.register('./sw.js').catch(() => { log('Offline page caching is unavailable; processing still works while this page is open.'); });
 }
+
+let reviewWindow = null;
+$('#open-review').addEventListener('click', () => {
+    reviewWindow = window.open(new URL('./review/', location.href), 'egc1-sample-review');
+    if (!reviewWindow) { notice('Allow this site to open the review page, then try again.'); }
+});
+window.addEventListener('message', event => {
+    if (event.origin !== location.origin || event.source !== reviewWindow || event.data?.type !== 'egc1-review-ready') { return; }
+    reviewWindow.postMessage({type:'egc1-review-library', handle, files, outputs:[...outputs], name:folderName},location.origin);
+});

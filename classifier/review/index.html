@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sample review — egc.one</title>
+  <meta name="theme-color" content="#050805">
+  <link rel="icon" href="../../egc1.png">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&amp;family=Inconsolata:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./style.css">
+  <script type="module" src="./bootstrap.js"></script>
+</head>
+<body>
+  <header class="masthead">
+    <div><a class="brand" href="../../">EGC1</a><span class="slash">/</span><span class="room">Sample review</span></div>
+    <div class="header-actions"><a href="../">Sample processing</a><span class="local-dot">Local library</span><button id="refresh" class="quiet" disabled>Refresh</button><button id="export" class="secondary" disabled>Export reviews ↗</button></div>
+  </header>
+  <section class="review-folder" id="review-folder">
+    <h1>Review samples</h1>
+    <p>Choose a prepared sample folder or USB stick. Audio stays on your computer. Instrument attention flags open first.</p>
+    <div class="actions"><button class="primary" id="review-choose">choose folder</button><input id="review-folder-input" type="file" webkitdirectory multiple hidden><button id="review-download" hidden>download metadata</button><input id="review-import" type="file" accept="application/json,.json" hidden><button id="review-import-button" type="button" hidden>import reviews</button><a href="../">back to processing</a></div>
+    <p id="review-save-mode" role="status">Completed samples only. No classification models are needed for review.</p>
+  </section>
+  <div class="app-shell" id="review-app" hidden>
+    <aside class="sidebar">
+      <p class="eyebrow">YOUR LISTENING QUEUE</p>
+      <div class="tabs" aria-label="Audio collection"><button id="samples-tab" class="active">Samples <span id="samples-count">0</span></button><button id="hits-tab">Hits <span id="hits-count">0</span></button></div>
+      <div class="queue-summary"><strong id="reviewed">0</strong><span id="progress-text">reviewed</span><span id="total">/ 0</span></div>
+      <progress id="progress" max="1" value="0" aria-label="Review progress"></progress>
+      <label class="filter-label" for="filter">Show</label>
+      <select id="filter"><option value="unreviewed">Unreviewed</option><option value="instrument">Flagged on instrument</option><option value="favourites">Favourites</option><option value="all">All items</option><option value="unsure">Needs another listen</option><option value="rejected">Extraction / grouping problems</option><option value="separated">Separated samples</option><option value="whole">Whole-file samples</option></select>
+      <div id="queue" class="queue" aria-label="Listening queue"></div>
+      <div class="sidebar-foot"><span id="library-info">Loading local library…</span><p>Source folders are interleaved. Names stay hidden.</p><p id="classifier-info">Loading category model status…</p></div>
+    </aside>
+    <main>
+      <div id="loading" class="empty-state">Opening your prepared library…</div>
+      <div id="workspace" hidden>
+        <div id="instrument-feedback" class="previous-comparison" hidden><span id="instrument-feedback-text"></span> <button id="resolve-instrument" class="quiet">Mark flag resolved</button></div>
+        <section id="previous-comparison" class="panel previous-comparison" aria-label="Previous review classification comparison" hidden>
+          <div class="section-heading"><div><p class="eyebrow">PREVIOUS REVIEW</p><h2>How did the pipeline do?</h2></div><button id="comparison-replay" class="quiet">▶ Replay previous</button></div>
+          <div class="comparison-labels"><div><span>Your saved choice</span><strong id="comparison-human"></strong></div><div><span>Pipeline prediction</span><strong id="comparison-prediction"></strong></div></div>
+          <div class="comparison-actions"><button data-comparison="way-off">Way off</button><button data-comparison="close">Close</button><button data-comparison="pipeline-better">Pipeline was better</button></div>
+          <p id="comparison-status" role="status">Your original listening judgement stays recorded separately.</p>
+        </section>
+        <div class="item-heading"><div><p class="eyebrow" id="item-kind">BLIND SAMPLE REVIEW</p><h1 id="item-title">Sample 001</h1><p id="item-meta" class="muted"></p></div><div class="blind-state"><span id="blind-badge" class="badge">Names & predictions hidden</span><button id="reveal" class="quiet">Reveal details</button></div></div>
+        <div id="details" class="details" hidden></div>
+        <div class="source-origin" aria-label="Review item origin"><strong id="source-origin-label"></strong><span id="source-origin-detail"></span></div>
+        <section class="player panel" aria-label="Audio player">
+          <div class="player-top"><div class="playback-tabs"><button id="view-primary" class="active">Sample <kbd>B</kbd></button><button id="view-marks" disabled>Your marks <kbd>M</kbd></button><button id="view-source" hidden>Original <kbd>A</kbd></button><button id="view-context" hidden>Context <kbd>C</kbd></button></div><span id="audio-time" class="time">0.00 / 0.00 s</span></div>
+          <canvas id="overview" height="132" tabindex="0" aria-label="Audio waveform; click to seek, drag to pan, scroll to zoom"></canvas>
+          <div class="wave-navigation overview-navigation">
+            <label class="zoom-label">Window <select id="overview-zoom" aria-label="Main waveform window"></select></label>
+            <button class="quiet" data-pan="overview" data-direction="-1" aria-label="Earlier in main waveform">←</button>
+            <input id="overview-position" type="range" min="0" max="1000" step="1" aria-label="Main waveform position">
+            <button class="quiet" data-pan="overview" data-direction="1" aria-label="Later in main waveform">→</button>
+          </div>
+          <div class="transport"><div><button id="play" class="play-button">▶ Play <kbd>Space</kbd></button><button id="previous" class="secondary" aria-label="Previous item">←</button><button id="next" class="secondary" aria-label="Next item">→</button><label class="check"><input type="checkbox" id="loop"> Loop</label></div><div><label for="volume" class="muted">Level</label><input id="volume" type="range" min="0" max="100" value="70" aria-label="Playback level"></div></div>
+          <div class="marked-playback"><span id="marked-range">Mark an attack or end to audition your cut.</span><button id="loop-join" class="quiet" title="Play just before your end mark, then loop back to your attack mark." disabled>▶ Loop join <kbd>J</kbd></button></div>
+        </section>
+        <section class="boundaries panel" aria-label="Attack and end inspection">
+          <div class="section-heading"><div><h2>At the edges</h2><p>Click to mark · drag to pan · scroll to zoom</p></div><label class="zoom-label">Window <select id="zoom" aria-label="Attack and end waveform window"></select></label></div>
+          <div class="edge-grid">
+            <div>
+              <div class="edge-title"><strong>Attack</strong><span id="attack-offset">Unmarked</span></div>
+              <canvas id="attack" height="100" tabindex="0" aria-label="Attack detail; click to mark, drag to pan, scroll to zoom"></canvas>
+              <div class="wave-navigation"><button class="quiet" data-pan="attack" data-direction="-1" aria-label="Earlier in attack view">←</button><input id="attack-position" type="range" min="0" max="1000" step="1" aria-label="Attack view position in source"><button class="quiet" data-pan="attack" data-direction="1" aria-label="Later in attack view">→</button><button class="quiet" data-center="attack" data-target="candidate">Cut</button><button id="attack-reference" class="quiet" data-center="attack" data-target="reference">Reference</button></div>
+              <p class="wave-location" id="attack-location"></p>
+              <div class="edge-actions"><button id="attack-play" class="quiet">▶ Context here</button><button id="attack-clear" class="quiet">Clear mark</button></div>
+            </div>
+            <div>
+              <div class="edge-title"><strong>End</strong><span id="end-offset">Unmarked</span></div>
+              <canvas id="tail" height="100" tabindex="0" aria-label="End detail; click to mark, drag to pan, scroll to zoom"></canvas>
+              <div class="wave-navigation"><button class="quiet" data-pan="tail" data-direction="-1" aria-label="Earlier in end view">←</button><input id="tail-position" type="range" min="0" max="1000" step="1" aria-label="End view position in source"><button class="quiet" data-pan="tail" data-direction="1" aria-label="Later in end view">→</button><button class="quiet" data-center="tail" data-target="candidate">Cut</button><button id="tail-reference" class="quiet" data-center="tail" data-target="reference">Reference</button></div>
+              <p class="wave-location" id="tail-location"></p>
+              <div class="edge-actions"><button id="tail-play" class="quiet">▶ Context here</button><button id="tail-clear" class="quiet">Clear mark</button></div>
+            </div>
+          </div>
+          <div class="wave-key"><span class="detector-key">Proposed cut / detected attack</span><span class="reference-key">Your reference</span><span class="zero-key">Horizontal line: zero amplitude</span><span>Faint markers: other detected transients</span></div>
+        </section>
+        <section class="judgement panel" aria-label="Your listening judgement">
+          <div class="section-heading"><div><h2>What do you hear?</h2><p>Choose more than one category or role when it fits.</p></div><label class="confidence-label">Certainty <select id="certainty"><option value="clear">Clear</option><option value="tentative">Tentative</option><option value="unsure">Unsure</option></select></label></div>
+          <div id="categories" class="category-buttons"></div>
+          <div class="roles-heading"><span id="roles-title">Choose a category to add a role</span><span class="muted">Q–U</span></div><div id="roles" class="role-buttons"></div>
+          <div id="hit-quality" hidden><div class="quality-heading" id="quality-title">Is this a useful extracted hit?</div><p id="quality-help"></p><div class="quality-buttons" aria-describedby="quality-help"><button data-quality="keep">Useful hit <kbd>G</kbd></button><button data-quality="reject">Bad extraction <kbd>X</kbd></button><button data-quality="unsure">Unsure</button></div><p class="issues-heading">What needs attention? <span class="muted">Choose any that apply.</span></p><div class="issue-buttons" id="issues"><label><input type="checkbox" value="wrong-category"> Wrong category</label><label><input type="checkbox" value="wrong-role"> Wrong subcategory / role</label><label><input type="checkbox" value="wrong-root"> Wrong root note / tuning</label><label><input type="checkbox" value="attack"> Attack clipped / starts late</label><label><input type="checkbox" value="leading-silence"> Silence before the sound</label><label><input type="checkbox" value="tail"> Tail cut short</label><label><input type="checkbox" value="trailing-silence"> Silence after the sound</label><label><input type="checkbox" value="loop-gap"> Gap at the loop join</label><label><input type="checkbox" value="loop-click"> Click at the loop join</label><label><input type="checkbox" value="loop-timing"> Wrong loop length / beat timing</label><label><input type="checkbox" value="too-short"> Too short to use / identify</label><label><input type="checkbox" value="silence"> Silent / almost silent</label><label><input type="checkbox" value="distorted"> Clipping / distortion</label><label><input type="checkbox" value="bleed"> Bleed / overlap</label><label><input type="checkbox" value="duplicate"> Duplicate</label><label id="not-drum-issue"><input type="checkbox" value="not-drum"> Not a drum</label><label data-region-issue><input type="checkbox" value="split"> One sound / phrase split apart</label><label data-region-issue><input type="checkbox" value="merged"> Independent sounds left together</label></div></div>
+          <textarea id="notes" rows="2" maxlength="2000" placeholder="Optional listening notes…" aria-label="Listening notes"></textarea>
+          <div class="save-row"><div><button id="save" class="primary">Save & next <kbd>Enter</kbd></button><button id="unsure" class="secondary">Unsure & next <kbd>S</kbd></button><button id="undo" class="quiet" disabled>Undo <kbd>Z</kbd></button></div><label class="check"><input id="autoplay" type="checkbox" checked> Play next on save</label></div>
+          <p id="status" role="status" aria-live="polite">Your judgements save to this library, separately from sample tags.</p>
+        </section>
+      </div>
+      <footer><span><kbd>Space</kbd> play / pause</span><span><kbd>←</kbd> <kbd>→</kbd> browse</span><span><kbd>1</kbd>–<kbd>5</kbd> categories</span><span><kbd>Q</kbd>–<kbd>U</kbd> roles</span><span><kbd>A</kbd> source · <kbd>B</kbd> sample · <kbd>C</kbd> context · <kbd>M</kbd> marks · <kbd>J</kbd> join</span></footer>
+    </main>
+  </div>
+</body>
+</html>

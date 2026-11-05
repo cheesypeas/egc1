@@ -23,18 +23,19 @@ export class Pipeline {
         this.pipeline = `${PIPELINE}:${options.beats ? 'beat-this-c5c1466e08abdb03' : 'no-beats'}`;
         this.folder = new Folder(handle, files, this.emit);
         try {
+            await this.folder.initialise({locked:true});
             this.stage('Finding samples in your folder');
             const sources = await this.folder.scan();
             if (!sources.length) { throw new Error('No audio files found. Choose a folder containing WAV, AIFF, FLAC or Ogg samples, including subfolders.'); }
-            const previous = await this.folder.json('.toysampler/library.json');
+            const previous = await this.folder.json('.egc1/library.json');
             if (previous && (previous.version !== 1 || !Array.isArray(previous.entries))) { throw new Error('This library uses an unsupported metadata format. Its existing metadata has been left untouched.'); }
-            this.overrides = validOverrides(await this.folder.json('.toysampler/overrides.json'));
-            this.feedback = await this.folder.json('.toysampler/instrument-feedback.json');
+            this.overrides = validOverrides(await this.folder.json('.egc1/overrides.json'));
+            this.feedback = await this.folder.json('.egc1/instrument-feedback.json');
             if (this.feedback && (this.feedback.version !== 1 || !this.feedback.items || typeof this.feedback.items !== 'object')) { throw new Error('Existing instrument feedback is invalid. Restore it before processing; no review marks have been replaced.'); }
-            const resolutions = await this.folder.json('.toysampler/instrument-resolutions.json');
+            const resolutions = await this.folder.json('.egc1/instrument-resolutions.json');
             this.resolutions = resolutions?.resolutions || {};
-            const config = await this.folder.json('.toysampler/banks.json');
-            if (!config) { await this.folder.writeJson('.toysampler/banks.json', BANKS); }
+            const config = await this.folder.json('.egc1/banks.json');
+            if (!config) { await this.folder.writeJson('.egc1/banks.json', BANKS); }
             else { validBanks(config); }
             const policy = (await this.inference.prototypesPromise).policy;
             this.policy = {...policy, frontend: FRONTEND, nameHints: options.hints, manualTags: true, browserRuntime: 'onnxruntime-web-1.22.0'};
@@ -110,7 +111,7 @@ export class Pipeline {
             this.report.state = this.pause ? 'paused' : this.manifest.state;
             this.report.finished = new Date().toISOString();
             await this.publish();
-            await this.folder.writeJson('.toysampler/browser/report.json', this.report);
+            await this.folder.writeJson('.egc1/browser/report.json', this.report);
             this.emit({type: this.pause ? 'paused' : 'complete', report: this.report, rows: [...this.rows.values()]});
         } finally { this.running = false; }
     }
@@ -137,7 +138,7 @@ export class Pipeline {
             if (info.frames >= info.rate * 60) { throw new Error('This source is 60 seconds or longer. Enable splitting at silence to extract playable regions.'); }
             return [{file, info, id, path, channels: decoded}];
         }
-        const cached = await this.folder.json(`.toysampler/imports/${id}.json`);
+        const cached = await this.folder.json(`.egc1/imports/${id}.json`);
         if (!this.options.force && cached?.method === IMPORT_METHOD && cached.id === id && cached.rate === info.rate && cached.samples === info.frames && cached.channels === info.channels && Array.isArray(cached.regions)) {
             if (!cached.split && !cached.regions.length) { return [{file, info, id, path, channels: decoded}]; }
             if (cached.split && cached.regions.length) {
@@ -145,7 +146,7 @@ export class Pipeline {
                 let previous = 0;
                 for (const region of cached.regions) {
                     if (!Number.isInteger(region.start) || !Number.isInteger(region.end) || region.start < previous || region.end <= region.start || region.end > info.frames ||
-                        !region.path?.startsWith(`.toysampler/regions/${id}/`) || !/^[0-9a-f]{64}$/.test(region.id)) { throw new Error('Invalid cached region metadata. Use “Reanalyse existing audio” to rebuild it.'); }
+                        !region.path?.startsWith(`.egc1/regions/${id}/`) || !/^[0-9a-f]{64}$/.test(region.id)) { throw new Error('Invalid cached region metadata. Use “Reanalyse existing audio” to rebuild it.'); }
                     previous = region.end;
                     let audio = null;
                     try { audio = await this.folder.file(region.path); }
@@ -169,7 +170,7 @@ export class Pipeline {
         const imported = {version: 1, method: IMPORT_METHOD, id, rate: info.rate, samples: info.frames, channels: info.channels,
             threshold: segmentation.threshold, split: segmentation.split, regions: [], skipped: []};
         if (!segmentation.split) {
-            await this.folder.writeJson(`.toysampler/imports/${id}.json`, imported);
+            await this.folder.writeJson(`.egc1/imports/${id}.json`, imported);
             return [{file, info, id, path, channels: decoded}];
         }
         if (!segmentation.bounds.length) { throw new Error('No audible regions found in this long source.'); }
@@ -183,7 +184,7 @@ export class Pipeline {
             }
             const channels = decoded ? decoded.map(ch => ch.slice(start, end)) : await readWav(file, info, start, end);
             const bytes = encodeWav(channels, info.rate), regionId = await hashBytes(bytes);
-            const relative = `.toysampler/regions/${id}/${start}-${end}.wav`;
+            const relative = `.egc1/regions/${id}/${start}-${end}.wav`;
             const blob = new Blob([bytes], {type: 'audio/wav'});
             await this.folder.write(relative, blob);
             const regionInfo = await audioInfo(blob);
@@ -192,14 +193,14 @@ export class Pipeline {
         }
         if (!items.length) { throw new Error('No regions are short enough for the sampler.'); }
         this.report.separatedRegions += items.length;
-        await this.folder.writeJson(`.toysampler/imports/${id}.json`, imported);
+        await this.folder.writeJson(`.egc1/imports/${id}.json`, imported);
         return items;
     }
     provenance(id, path, info, start, end) { return {kind: 'separated', sourceId: id, sourcePath: path, sourceSamples: info.frames, rate: info.rate, start, end}; }
     async prepare(item, kind) {
         const {id, info, file} = item;
-        let data = await this.folder.json(`.toysampler/entries/${id}.json`);
-        let embedding = await this.folder.json(`.toysampler/browser/embeddings/${id}.json`);
+        let data = await this.folder.json(`.egc1/entries/${id}.json`);
+        let embedding = await this.folder.json(`.egc1/browser/embeddings/${id}.json`);
         const assets = await this.inference.assetsPromise;
         const analysisCached = !this.options.force && validAnalysis(data, id, this.pipeline, info);
         const embeddingCached = !this.options.force && validEmbedding(embedding, id, info, FRONTEND, assets.models.audio.sha256);
@@ -210,12 +211,12 @@ export class Pipeline {
         else {
             data = await this.inference.analyse(item.channels, info.rate, info.root, this.options.beats && kind !== 'hit');
             data = {...data, id, pipeline: this.pipeline, kitCandidatesVersion: 0};
-            await this.folder.writeJson(`.toysampler/entries/${id}.json`, data);
+            await this.folder.writeJson(`.egc1/entries/${id}.json`, data);
         }
         if (embeddingCached) { this.report.reusedEmbeddings++; }
         else {
             embedding = {...await this.inference.audio(item.channels, info.rate), id};
-            await this.folder.writeJson(`.toysampler/browser/embeddings/${id}.json`, embedding);
+            await this.folder.writeJson(`.egc1/browser/embeddings/${id}.json`, embedding);
             this.report.newEmbeddings++;
         }
         const scores = await this.inference.scores(embedding);
@@ -223,13 +224,13 @@ export class Pipeline {
         const evidence = roleEvidence(raw.tags, scores);
         const semantic = {version: 1, id, rate: info.rate, samples: info.frames, analysisPipeline: this.pipeline,
             policy: {...this.policy, nameHints: false}, tags: raw.tags, reason: raw.reason, scores, roleEvidence: evidence, needsReview: true};
-        await this.folder.writeJson(`.toysampler/semantic/${id}.json`, semantic);
+        await this.folder.writeJson(`.egc1/semantic/${id}.json`, semantic);
         const hints = this.options.hints && kind !== 'hit' ? nameHints(sourceOf(item)) : [];
         const substantiveHints = hints.filter(tag => tag !== 'recorded');
         const assigned = substantiveHints.length ? applyHints(raw.tags, hints) : [...raw.tags, ...hints];
         const manual = this.overrides[id];
         const recordedId = item.provenance?.sourceId || id;
-        const recorded = await this.folder.json(`.toysampler/recordings/${recordedId}.json`);
+        const recorded = await this.folder.json(`.egc1/recordings/${recordedId}.json`);
         const tags = [...new Set(manual || assigned)];
         if (recorded?.version === 1 && recorded.id === recordedId && !tags.includes('recorded')) { tags.push('recorded'); }
         const row = {id, path: item.path, bytes: file.size, state: 'ready', rate: info.rate, samples: info.frames, channels: info.channels,
@@ -257,7 +258,7 @@ export class Pipeline {
                 for (let i = 0; i < fade; i++) { channel[channel.length - fade + i] *= 1 - i / fade; }
             }
             const bytes = encodeWav(channels, item.info.rate), id = await hashBytes(bytes);
-            const name = `hit-${String(index + 1).padStart(2, '0')}.wav`, path = `.toysampler/kits/${item.id}/${name}`;
+            const name = `hit-${String(index + 1).padStart(2, '0')}.wav`, path = `.egc1/kits/${item.id}/${name}`;
             const file = new Blob([bytes], {type: 'audio/wav'});
             await this.folder.write(path, file);
             const info = await audioInfo(file);
@@ -266,7 +267,7 @@ export class Pipeline {
             this.report.hits++;
         }
         const kit = {version: 1, sourceId: item.id, sourcePath: item.path, rate: item.info.rate, needsReview: true, origin: 'extracted', hits};
-        await this.folder.writeJson(`.toysampler/kits/${item.id}/kit.json`, kit);
+        await this.folder.writeJson(`.egc1/kits/${item.id}/kit.json`, kit);
         this.report.kits++;
         this.emit({type: 'kit', sourceId: item.id, count: hits.length});
     }
@@ -286,14 +287,14 @@ export class Pipeline {
     }
     async publish() {
         this.manifest.entries = [...this.rows.values()];
-        await this.folder.writeJson('.toysampler/library.json', this.manifest);
+        await this.folder.writeJson('.egc1/library.json', this.manifest);
     }
     async correct(id, tags) {
         if (this.running || !this.folder) { throw new Error('Pause processing before changing a classification.'); }
         if (!/^[0-9a-f]{64}$/.test(id) || !Array.isArray(tags) || !tags.length || tags.some(tag => !/^[a-z0-9-]+$/.test(tag))) { throw new Error('Invalid classification correction.'); }
-        const overrides = validOverrides(await this.folder.json('.toysampler/overrides.json'));
+        const overrides = validOverrides(await this.folder.json('.egc1/overrides.json'));
         overrides[id] = tags;
-        await this.folder.writeJson('.toysampler/overrides.json', overrides);
+        await this.folder.writeJson('.egc1/overrides.json', overrides);
         this.overrides = overrides;
         for (const row of this.rows.values()) { if (row.id === id) { row.tags = tags; row.tagsSource = 'manual'; row.needsReview = false; } }
         await this.publish();
