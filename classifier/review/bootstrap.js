@@ -44,6 +44,7 @@ async function open({handle = null, files: inputs = [], outputs = [], name: labe
         folder = candidateFolder; library = candidate; name = label; writable = Boolean(handle);
         if (handle) { await cache.set('last-folder',{handle,name}); }
         $('refresh').disabled = false; $('export').disabled = false;
+        document.body.classList.add('library-open');
         $('review-app').hidden = false; $('review-folder').querySelector('h1').textContent = 'Sample review';
         $('review-choose').textContent = 'change folder'; saveMode();
         await window.start();

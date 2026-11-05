@@ -137,4 +137,6 @@ python3 classifier/sync-review-ui.py /path/to/sampler-checkout --check
 ```
 
 `review/library.js` provides the browser folder adapter; `review/bootstrap.js`
-handles folder selection and browser persistence. No local HTTP API is needed.
+handles folder selection and browser persistence. `review/site.css` adapts the
+shared player to the processor stylesheet, including the common site header,
+spacing, typography and controls. No local HTTP API is needed.

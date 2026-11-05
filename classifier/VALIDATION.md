@@ -70,3 +70,9 @@ avoid an observed streamed CacheStorage failure on the large WASM runtime.
   `.egc1` ZIP contents and offline processing passed.
 - Node tests cover legacy migration, source-frame region/kit identities,
   changed audio, review import/export, independent review sessions and save failure.
+
+Review styling follow-up: rendered header geometry, body/heading fonts and primary
+button styling match the processing page. The open-library folder controls become
+compact while keeping all actions accessible. Desktop and 390px mobile layouts,
+primary button contrast, playback, native review import, folder persistence and
+processing-to-review handoff passed after applying the shared stylesheet.
