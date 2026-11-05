@@ -100,8 +100,8 @@ try:
                 download.value.save_as(archive)
                 with zipfile.ZipFile(archive) as metadata:
                     assert metadata.testzip() is None
-                    assert all(name.startswith('.toysampler/') for name in metadata.namelist())
-                    manifest = json.loads(metadata.read('.toysampler/library.json'))
+                    assert all(name.startswith('.egc1/') for name in metadata.namelist())
+                    manifest = json.loads(metadata.read('.egc1/library.json'))
                     assert len([row for row in manifest['entries'] if row['state'] == 'ready']) == 3
                 print('Starting run', flush=True)
                 page.locator('#run').click()

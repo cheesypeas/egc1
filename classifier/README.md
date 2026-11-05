@@ -1,6 +1,6 @@
-# Sample Lab
+# Sample processor
 
-A buildless, browser-only ToySampler library preparer at `/classifier/`.
+A buildless, browser-only EGC1 library preparer at `/classifier/`.
 No server, account, package installation or local helper is needed by users.
 
 ## Using it
@@ -8,8 +8,8 @@ No server, account, package installation or local helper is needed by users.
 Open the HTTPS page in a current desktop browser. Choose a sample folder (or a
 USB stick), select the processing options and press **prepare samples**.
 Chrome and Edge can save directly into the chosen folder. Other browsers use a
-folder input and a metadata ZIP: extract its `.toysampler` folder into the same
-sample folder. Keep originals and `.toysampler` together when moving a library.
+folder input and a metadata ZIP: extract its `.egc1` folder into the same
+sample folder. Keep originals and `.egc1` together when moving a library.
 
 Progress and completed results appear during processing. Pause finishes the
 current sample before saving; reopening and running the same folder reuses
@@ -38,7 +38,7 @@ suggested categories/cuts still need listening checks.
 
 ## Metadata compatibility
 
-Original audio is never rewritten. All writes are confined to `.toysampler/`:
+Original audio is never rewritten. All writes are confined to `.egc1/`:
 
 - `library.json`: version 1 ready-only catalogue (failed rows remain explicit).
 - `entries/<SHA256>.json`: portable pitch/transient/loop/vocal/gate analysis.
@@ -91,7 +91,7 @@ download. `mel-filters.json` contains the exact 48 kHz Slaney mel filter bank.
 Run primitive/interoperability checks with Node 22+:
 
 ```
-node --test classifier/tests/primitives.test.mjs
+node --test classifier/tests/*.test.mjs
 ```
 
 For an end-to-end test with generated samples, install Playwright in a separate
@@ -108,3 +108,35 @@ browser profile. `--profile /outside/the/repository/profile` can retain download
 models between test runs. Additional validation results are in `VALIDATION.md`.
 
 See `THIRD_PARTY_NOTICES.txt` and the linked licence/source files for attribution.
+
+## Detailed sample review
+
+Use **review prepared samples** to open `/classifier/review/` with the selected
+folder and generated metadata. It can also open a prepared folder independently.
+No models are loaded for review. Attention flags, original/region/hit provenance,
+source-frame marks, marked playback, loop-join audition, issue choices, blind
+judgements and post-save comparisons use the native review format.
+
+Direct folder access saves `.egc1/evaluation.json`; download mode also retains
+reviews in IndexedDB, keyed by dataset identity, and exports `egc1-metadata.zip`.
+Use `egc1-reviews.json` to export/import judgements independently. Existing legacy
+exports are accepted. Import retains newer saved judgements. Explicitly resolving
+an instrument flag is separate from saving a judgement.
+
+Legacy `.toysampler` metadata is copied into `.egc1` before any new writes; the
+catalogue is published last and old metadata is retained. Audio IDs, hand labels,
+feedback and source-frame bounds remain unchanged. Never migrate a USB library
+under a playing instrument, and update its reader before using `.egc1` alone.
+
+The native `tools/audition/app.js` and `style.css` are the common player/UI source.
+After editing them, synchronise this static copy and check both issue lists:
+
+```sh
+python3 classifier/sync-review-ui.py /path/to/sampler-checkout
+python3 classifier/sync-review-ui.py /path/to/sampler-checkout --check
+```
+
+`review/library.js` provides the browser folder adapter; `review/bootstrap.js`
+handles folder selection and browser persistence. `review/site.css` adapts the
+shared player to the processor stylesheet, including the common site header,
+spacing, typography and controls. No local HTTP API is needed.

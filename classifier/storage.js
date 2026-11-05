@@ -8,12 +8,65 @@ export function safeRelative(path) {
     return path;
 }
 
+export const METADATA = ".egc1";
+export const LEGACY_METADATA = ".toysampler";
+export const canonicalPath = path => path === LEGACY_METADATA || path.startsWith(LEGACY_METADATA + "/") ? METADATA + path.slice(LEGACY_METADATA.length) : path;
+
+function migratePaths(value) {
+    if (Array.isArray(value)) { return value.map(migratePaths); }
+    if (value && typeof value === "object") {
+        return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, ["path", "sourcePath"].includes(key) && typeof item === "string" ? canonicalPath(item) : migratePaths(item)]));
+    }
+    return value;
+}
+
 export class Folder {
     constructor(handle, files = [], emit = () => {}) {
         this.handle = handle;
         this.files = new Map(files.map(({path, file}) => [safeRelative(path), file]));
         this.outputs = new Map();
         this.emit = emit;
+        this.initialised = false;
+    }
+    async initialise({locked = false} = {}) {
+        if (this.initialised) { return; }
+        const rawFile = async path => {
+            if (this.outputs.has(path)) { return this.outputs.get(path); }
+            if (!this.handle) { return this.files.get(path) || null; }
+            try { return await (await this.entry(path)).getFile(); }
+            catch (error) { if (error.name === 'NotFoundError') { return null; } throw error; }
+        };
+        if (await rawFile('.egc1/library.json') || !await rawFile('.toysampler/library.json')) { this.initialised = true; return; }
+        // Processing already holds this lock; review acquires it before copying legacy files.
+        if (!locked && globalThis.navigator?.locks) {
+            return navigator.locks.request('egc-classifier-write', () => this.initialise({locked:true}));
+        }
+        this.emit({type: 'stage', stage: 'Migrating legacy metadata to .egc1'});
+        const legacy = [];
+        if (this.handle) {
+            const visit = async (directory, prefix) => {
+                for await (const [name, entry] of directory.entries()) {
+                    const path = prefix + name;
+                    if (entry.kind === 'directory') { await visit(entry, path + '/'); }
+                    else if (!name.endsWith('.lock') && !name.endsWith('.tmp')) { legacy.push({path, file: await entry.getFile()}); }
+                }
+            };
+            await visit(await this.handle.getDirectoryHandle('.toysampler'), '.toysampler/');
+        } else {
+            for (const [path, file] of this.files) {
+                if (path.startsWith('.toysampler/') && !path.endsWith('.lock') && !path.endsWith('.tmp')) { legacy.push({path, file}); }
+            }
+        }
+        // Publish the catalogue last. A partial migration remains safely readable from legacy metadata.
+        legacy.sort((a, b) => Number(a.path.endsWith('/library.json')) - Number(b.path.endsWith('/library.json')));
+        for (const {path, file} of legacy) {
+            if (path.endsWith('.json')) {
+                const value = JSON.parse(await file.text());
+                await this.writeJson(canonicalPath(path), migratePaths(value));
+            } else { await this.write(canonicalPath(path), file); }
+        }
+        this.initialised = true;
+        this.emit({type: 'notice', message: 'Metadata migrated to .egc1. The legacy folder is retained as a backup; new writes use .egc1.'});
     }
     async entry(path, create = false) {
         const parts = safeRelative(path).split('/');
@@ -23,6 +76,7 @@ export class Folder {
     }
     async file(path) {
         safeRelative(path);
+        path = canonicalPath(path);
         if (this.outputs.has(path)) { return this.outputs.get(path); }
         if (this.handle) { return (await this.entry(path)).getFile(); }
         return this.files.get(path) || null;
@@ -38,7 +92,8 @@ export class Folder {
     }
     async write(path, value) {
         safeRelative(path);
-        if (!path.startsWith('.toysampler/')) { throw new Error('Only .toysampler metadata and derived audio may be written.'); }
+        path = canonicalPath(path);
+        if (!path.startsWith('.egc1/')) { throw new Error('Only .egc1 metadata and derived audio may be written.'); }
         const blob = value instanceof Blob ? value : new Blob([value]);
         if (this.handle) {
             // createWritable commits on close, retaining the old file until then.

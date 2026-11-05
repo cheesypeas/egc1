@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#050805">
     <meta name="description" content="Prepare a sample library in your browser. Classify sounds, find loops and split sample collections. Your audio stays on your computer.">
-    <title>sample lab — egc.one</title>
+    <title>sample processing — egc.one</title>
     <link rel="icon" href="../egc1.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -22,23 +22,23 @@
         </header>
         <main>
             <section class="intro" aria-labelledby="title">
-                <p class="eyebrow"><span class="eyebrow-line"></span> SAMPLE LAB <span class="version">/ 01</span></p>
-                <h1 id="title">less sorting.<br><span>more playing.</span></h1>
-                <p class="intro-copy">Turn a folder of sounds into a sampler library.<br class="desktop-break"> Find categories, separate sounds and get your samples ready to play.</p>
-                <div class="principles"><span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 7h10v7H3zM5 7V5a3 3 0 0 1 6 0v2"/></svg> no audio uploads</span><span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m3 8 3 3 7-7"/></svg> originals stay untouched</span><span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13 5a6 6 0 1 0 1 6M13 1v4H9"/></svg> pick up where you left off</span></div>
+                <p class="eyebrow"><span class="eyebrow-line"></span> EGC1</p>
+                <h1 id="title">Sample processing</h1>
+                <p class="intro-copy">Classify samples, detect loop timing and split files at silence.<br class="desktop-break"> Save audio analysis and categories for EGC1.</p>
+                <div class="principles"><span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 7h10v7H3zM5 7V5a3 3 0 0 1 6 0v2"/></svg> no audio uploads</span><span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m3 8 3 3 7-7"/></svg> source files preserved</span><span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13 5a6 6 0 1 0 1 6M13 1v4H9"/></svg> resume saved processing</span></div>
             </section>
 
             <ol class="steps" aria-label="Preparation steps">
                 <li class="current" id="step-choose"><span>01</span> choose a folder</li>
-                <li id="step-process"><span>02</span> let it listen</li>
-                <li id="step-review"><span>03</span> listen &amp; play</li>
+                <li id="step-process"><span>02</span> process samples</li>
+                <li id="step-review"><span>03</span> review results</li>
             </ol>
 
             <section class="panel setup" aria-labelledby="setup-title">
-                <div class="panel-heading"><h2 id="setup-title">your sample folder</h2><span class="small-label" id="save-mode">LOCAL FILES ONLY</span></div>
+                <div class="panel-heading"><h2 id="setup-title">sample folder</h2><span class="small-label" id="save-mode">LOCAL FILES ONLY</span></div>
                 <div class="drop-zone" id="drop-zone">
                     <div class="folder-icon" aria-hidden="true"><svg viewBox="0 0 48 40"><path d="M3 10V6h15l5 5h22v25H3z"/><path d="M3 15h42M24 21v10m-5-5 5-5 5 5"/></svg></div>
-                    <div class="folder-copy"><h3 id="folder-name">a little chaos is welcome.</h3><p id="folder-description">Choose your sample folder. Subfolders are included.</p></div>
+                    <div class="folder-copy"><h3 id="folder-name">Select a sample folder</h3><p id="folder-description">Subfolders are included.</p></div>
                     <button type="button" class="button primary" id="choose-folder">choose folder <span aria-hidden="true">↗</span></button>
                     <input id="folder-input" type="file" webkitdirectory multiple hidden>
                 </div>
@@ -52,6 +52,7 @@
                 </fieldset>
                 <div class="setup-bottom">
                     <p><span class="status-dot dim" id="folder-status-dot"></span><span id="folder-status">no folder selected</span></p>
+                    <button type="button" class="button quiet" id="open-review" disabled>review prepared samples</button>
                     <button type="button" class="button primary run-button" id="run" disabled>prepare samples <span aria-hidden="true">→</span></button>
                 </div>
                 <details class="advanced"><summary>more options</summary><label><input type="checkbox" id="force"> reanalyse existing audio <span>— slower; saved manual labels and review marks are retained</span></label><p>The models download when first needed (about 113 MiB for classification, plus 80 MiB for loop timing) and are kept in browser storage where available. Keep this page open while processing.</p></details>
@@ -69,7 +70,7 @@
             </section>
 
             <section id="results" class="results" aria-labelledby="results-title" hidden>
-                <div class="section-heading"><div><p class="eyebrow">YOUR LIBRARY</p><h2 id="results-title">from a folder to a collection.</h2></div><div class="export-buttons"><button type="button" class="button quiet" id="export-report">save report <span aria-hidden="true">↓</span></button><button type="button" class="button primary" id="export-metadata" hidden>download metadata <span aria-hidden="true">↓</span></button></div></div>
+                <div class="section-heading"><div><p class="eyebrow">RESULTS</p><h2 id="results-title">Processing results</h2></div><div class="export-buttons"><button type="button" class="button quiet" id="export-report">save report <span aria-hidden="true">↓</span></button><button type="button" class="button primary" id="export-metadata" hidden>download metadata <span aria-hidden="true">↓</span></button></div></div>
                 <div class="stats" aria-label="Results summary">
                     <div class="stat"><span class="stat-label">SOUNDS READY</span><strong id="stat-ready">0</strong><span>ready to audition</span></div>
                     <div class="stat"><span class="stat-label">REUSED</span><strong id="stat-cached">0</strong><span>from saved analysis</span></div>
@@ -83,13 +84,12 @@
                     <p class="empty-results" id="empty-results" hidden>No sounds match this filter.</p>
                     <div class="table-footer"><span id="showing">0 sounds</span><div><button type="button" class="page-button" id="previous-page" aria-label="Previous page">←</button><span id="page-label">1 / 1</span><button type="button" class="page-button" id="next-page" aria-label="Next page">→</button></div></div>
                 </div>
-                <p class="results-note" id="results-note">Categories are suggestions. Listen to a sound and correct its category if needed.</p>
+                <p class="results-note" id="results-note">Categories are suggestions. Open detailed review for issue checkboxes, waveform marks, loop joins and instrument attention flags.</p>
                 <details class="log-panel"><summary>processing details <span id="log-count"></span></summary><ol id="event-log"></ol></details>
             </section>
 
-            <section class="how-it-works" id="how-it-works"><div><span>01 / PRIVATE BY DESIGN</span><h3>your sounds stay yours.</h3><p>Analysis runs in your browser. Your audio is never sent to a server.</p></div><div><span>02 / PICK UP LATER</span><h3>process once. play anywhere.</h3><p>Analysis and categories are saved in <code>.toysampler</code> alongside your sounds, ready for the instrument.</p></div><div><span>03 / NO INSTALLATION</span><h3>just bring the samples.</h3><p>Open this page, choose a folder and start. Saved models can be reused without downloading them again.</p></div></section>
         </main>
-        <footer class="site-footer"><a href="../">egc.one</a><span>made for finding the good bits.</span><a href="./about.html">how it works &amp; credits <span aria-hidden="true">↗</span></a></footer>
+        <footer class="site-footer"><a href="../">egc.one</a><a href="./about.html">how it works &amp; credits <span aria-hidden="true">↗</span></a></footer>
     </div>
 
     <aside class="audition" id="audition" aria-label="Sample audition" hidden>

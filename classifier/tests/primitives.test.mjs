@@ -37,16 +37,16 @@ test('antiphase stereo stays audible and long silence separates two ordinary sou
 });
 test('folder writes cannot escape metadata or overwrite source audio', async () => {
     const folder = new Folder(null, [], () => {});
-    for (const path of ['original.wav', '../oops', '/absolute', '.toysampler/../original.wav', '.toysampler/evil\\path']) {
+    for (const path of ['original.wav', '../oops', '/absolute', '.egc1/../original.wav', '.egc1/evil\\path']) {
         await assert.rejects(folder.write(path, new Blob(['x'])));
     }
-    await folder.writeJson('.toysampler/overrides.json', {});
-    assert.deepEqual(await folder.json('.toysampler/overrides.json'), {});
+    await folder.writeJson('.egc1/overrides.json', {});
+    assert.deepEqual(await folder.json('.egc1/overrides.json'), {});
     assert.throws(() => validOverrides({'../bad': ['drums']}));
 });
 test('ZIP exports contain metadata under the expected relative names', async () => {
-    const path = '.toysampler/regions/café.wav';
-    const blob = await metadataZip(new Map([[path, new Blob(['audio'])], ['.toysampler/library.json', new Blob(['{}'])]]));
+    const path = '.egc1/regions/café.wav';
+    const blob = await metadataZip(new Map([[path, new Blob(['audio'])], ['.egc1/library.json', new Blob(['{}'])]]));
     const bytes = new Uint8Array(await blob.arrayBuffer()), view = new DataView(bytes.buffer);
     assert.equal(view.getUint32(0, true), 0x04034b50);
     assert.equal(view.getUint16(6, true), 0x800);

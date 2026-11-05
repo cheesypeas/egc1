@@ -7,5 +7,6 @@ node_modules/
 *.flac
 *.ogg
 .toysampler/
+.egc1/
 __pycache__/
 .playwright/

@@ -24,7 +24,7 @@ accuracy across sample packs.
   independently checked against SHA-256 of exported file bytes.
 - Public pinned CLAP and Beat This! model URLs successfully downloaded in Chrome
   with CORS and SHA-256 verification. Model weights are not stored in Git.
-- Folder-input fallback produced a ZIP with valid CRCs and only `.toysampler/`
+- Folder-input fallback produced a ZIP with valid CRCs and only `.egc1/`
   members. Pause/resume reused the completed file instead of reclassifying it.
 - After the page and CLAP model were cached, the browser was set fully offline,
   the page reloaded, and a fresh multi-region source produced two new sounds.
@@ -52,3 +52,27 @@ page code with a dedicated profile: deterministic immediate pause, resume,
 classification, separated regions, corrupt-file isolation, ZIP CRC validation,
 cache reuse and new inference after offline reload. Buffered page-asset commits
 avoid an observed streamed CacheStorage failure on the large WASM runtime.
+
+## EGC1 review and metadata migration — 2026-11-05
+
+- Browser review tested against all 19 fetched instrument-attention samples,
+  including separated regions. All 19 existing native reviews import and survive.
+- Direct-folder writes, fallback IndexedDB save/reload, metadata ZIP output,
+  source/marked playback, undo and explicit flag resolution verified.
+- The processor hands its selected folder to the static review page. Review
+  opens without model downloads or calls to a local API.
+- Blind session data omits filenames and predictions. All 18 issue choices
+  round-trip through the native-compatible format.
+- Desktop and 390-pixel mobile layouts checked; no horizontal overflow or
+  JavaScript page errors. Zero-amplitude lines remain above the waveform.
+- Processing regression rerun with generated audio and pinned local model bytes:
+  classification, silence regions, malformed files, pause/resume, cached analysis,
+  `.egc1` ZIP contents and offline processing passed.
+- Node tests cover legacy migration, source-frame region/kit identities,
+  changed audio, review import/export, independent review sessions and save failure.
+
+Review styling follow-up: rendered header geometry, body/heading fonts and primary
+button styling match the processing page. The open-library folder controls become
+compact while keeping all actions accessible. Desktop and 390px mobile layouts,
+primary button contrast, playback, native review import, folder persistence and
+processing-to-review handoff passed after applying the shared stylesheet.
