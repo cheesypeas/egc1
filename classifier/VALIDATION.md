@@ -77,6 +77,44 @@ compact while keeping all actions accessible. Desktop and 390px mobile layouts,
 primary button contrast, playback, native review import, folder persistence and
 processing-to-review handoff passed after applying the shared stylesheet.
 
+## Processing investigation and bank summary — 2026-11-11
+
+The completed Hotcakes report records 67 min 30 s for 159 source files, 207
+prepared samples and 13 extracted hits, with zero reused analyses/embeddings.
+57 samples exceed ten seconds. From the cached loop analyses and browser context
+rule, 145 samples qualify for beat inference, expanding to approximately 78.3
+minutes of repeated audio. These workload counts explain why source-file count
+and dropping one analysis channel do not imply proportionate processing speed.
+They do not measure the share of elapsed time taken by each stage. The old
+report has no stage timings, so it cannot establish an inference-speed regression.
+The mono commit leaves the model weights, one-thread WASM runtime, crop policy
+and beat repetition policy unchanged.
+
+Two exported Future Music CD1 judgements are retained in
+`tests/boundary-review-cases.json` as open accuracy failures. Both marked attacks
+are about 20.4 ms after the extracted region start, consistent with the splitter's
+fixed 20 ms pre-roll and 5 ms envelope bins. The hat's marked end is 52.8 ms
+earlier, consistent with the fixed 50 ms post-roll. The drum loop's marked end is
+161.3 ms earlier and its cached loop-boundary confidence is zero. Its category
+agrees with the reviewer; the hat was predicted as cymbal. The current change
+does not tune cuts, beat tracking or classification against these two examples.
+Original samples, prepared-library metadata and saved reviews were read only.
+
+The completion panel counts unique prepared audio against the folder's actual
+bank configuration, includes empty banks and separates kit/sound counts.
+Catalogue publication drops one redundant full-manifest write per completed
+source while retaining partial-region pause checkpoints. Reports retain run
+options, stage wall times and overlapping metadata-write time/count.
+
+Node primitive, pipeline and review checks pass. The real Chrome integration
+passes WASM left-channel analysis, classification, silence-separated regions,
+malformed-file isolation, immediate pause/resume, ZIP integrity, cached reuse,
+offline processing, report timings and all twelve bank-summary entries. Desktop
+and 390 px mobile screenshots were inspected; mobile has no horizontal overflow.
+Pipeline checks also cover category-correction summaries, duplicate placements,
+custom bank predicates and pausing after an intermediate region. These checks
+verify the new workflow; they do not resolve the recorded accuracy failures.
+
 ## Left-channel analysis and zero-crossing cuts — 2026-11-11
 
 - Rebuilt the included ToySampler `802b986` analysis snapshot with pinned

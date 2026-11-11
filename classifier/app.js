@@ -41,7 +41,7 @@ function folderSelected() {
     if (worker) { worker.terminate(); worker = null; }
     stopPlayback();
     rows.clear(); analyses.clear(); outputs.clear(); report = null; paused = false; page = 0;
-    $('#results').hidden = true; $('#processing').hidden = true; $('#audition').hidden = true;
+    $('#results').hidden = true; $('#processing').hidden = true; $('#audition').hidden = true; $('#bank-summary').hidden = true;
     document.body.classList.remove('has-player');
     $('#folder-name').textContent = folderName;
     $('#folder-description').textContent = handle ? 'Ready to scan this folder and its subfolders.' : `${number(files.length)} files selected · subfolders included.`;
@@ -129,6 +129,7 @@ function finishError(message) {
 $('#run').addEventListener('click', () => {
     if (running || (!handle && !files.length)) { return; }
     notice('');
+    $('#bank-summary').hidden = true;
     if (!paused) { rows.clear(); analyses.clear(); report = null; }
     done = 0; within = 0; total = 0;
     $('#processing').hidden = false; $('#stage').textContent = 'scanning sample files'; $('#current-file').textContent = folderName;
@@ -203,6 +204,7 @@ async function receive(data) {
         return;
     }
     if (data.type === 'corrected') {
+        if (report) { report.bankSummary = data.summary; }
         for (const row of rows.values()) { if (row.id === data.id) { row.tags = data.tags; row.tagsSource = 'manual'; row.needsReview = false; } }
         if (selected?.id === data.id) { selected.tags = data.tags; selected.tagsSource = 'manual'; updatePlayerMeta(); }
         $('#correction').hidden = true; $('#save-correction').disabled = false;
@@ -227,6 +229,7 @@ function matches(row, filter) {
     return row.state === 'ready' && destination(row.tags) === filter;
 }
 function render() {
+    renderBankSummary();
     const all = [...rows.values()], ready = all.filter(row => row.state === 'ready');
     $('#stat-ready').textContent = number(ready.length);
     $('#stat-cached').textContent = number(ready.filter(row => row.cached).length);
@@ -281,6 +284,28 @@ function render() {
     $('#empty-results').hidden = filtered.length > 0;
     $('#showing').textContent = filtered.length ? `${number(page * PAGE_SIZE + 1)}–${number(Math.min(filtered.length, (page + 1) * PAGE_SIZE))} of ${number(filtered.length)} sounds` : '0 sounds';
     $('#page-label').textContent = `${page + 1} / ${pages}`; $('#previous-page').disabled = page === 0; $('#next-page').disabled = page >= pages - 1;
+}
+
+function renderBankSummary() {
+    const summary = report?.bankSummary, panel = $('#bank-summary');
+    panel.hidden = running || paused || !summary;
+    if (panel.hidden) { return; }
+    $('#bank-summary-note').textContent = `${number(summary.uniqueSamples)} unique samples. Sounds can appear in several banks. ${number(summary.unassigned)} samples have no bank assignment.`;
+    const groups = $('#bank-groups'); groups.replaceChildren();
+    for (const [mode, banks] of summary.banks.entries()) {
+        const group = document.createElement('div'), heading = document.createElement('h3'), list = document.createElement('ul');
+        heading.textContent = ['Drums', 'Loops / voice', 'Synth'][mode];
+        group.className = 'bank-group';
+        for (const bank of banks) {
+            const item = document.createElement('li'), label = document.createElement('span'), count = document.createElement('strong');
+            item.classList.toggle('empty-bank', !bank.sounds);
+            label.textContent = `${bank.slot + 1}. ${bank.label}`;
+            count.textContent = bank.kind === 'kits' ? `${number(bank.kits)} kits · ${number(bank.sounds)} sounds` : `${number(bank.sounds)} sounds`;
+            if (!bank.sounds) { count.textContent = 'EMPTY · ' + count.textContent; }
+            item.append(label, count); list.append(item);
+        }
+        group.append(heading, list); groups.append(group);
+    }
 }
 $('#search').addEventListener('input', () => { page = 0; render(); });
 $('#previous-page').addEventListener('click', () => { page = Math.max(0, page - 1); render(); });

@@ -132,3 +132,31 @@ export const BANKS = {version: 1, banks: [
      {label: 'Pads', kind: 'samples', tagsAll: ['synth', 'pad'], exclude: ['recorded']},
      {label: 'Recorded', kind: 'samples', tagsAny: ['synth', 'vocal-note'], tagsAll: ['recorded']}],
 ]};
+
+// Count unique prepared audio, using the same tag predicates as the instrument.
+// A sound can belong to several banks; duplicate file placements count once.
+export function bankSummary(config, rows, kits = new Map()) {
+    const samples = new Map();
+    for (const row of rows) {
+        if (row.state === 'ready') { samples.set(row.id, row); }
+    }
+    const assigned = new Set();
+    const banks = config.banks.map((group, mode) => group.map((bank, slot) => {
+        let sounds = 0, collections = 0;
+        for (const [id, row] of samples) {
+            if (bank.kind === 'kits') {
+                if (kits.get(id)) { collections++; sounds += kits.get(id); assigned.add(id); }
+                continue;
+            }
+            const tags = row.tags || [];
+            const unroled = bank.includeUnroledSynth && tags.includes('synth') &&
+                !['bass', 'pad', 'lead', 'keys'].some(tag => tags.includes(tag));
+            if ((bank.tagsAny?.length && !bank.tagsAny.some(tag => tags.includes(tag)) && !unroled) ||
+                !(bank.tagsAll || []).every(tag => tags.includes(tag)) ||
+                (bank.exclude || []).some(tag => tags.includes(tag))) { continue; }
+            sounds++; assigned.add(id);
+        }
+        return {mode, slot, label: bank.label, kind: bank.kind, sounds, ...(bank.kind === 'kits' ? {kits: collections} : {})};
+    }));
+    return {banks, uniqueSamples: samples.size, unassigned: samples.size - assigned.size};
+}

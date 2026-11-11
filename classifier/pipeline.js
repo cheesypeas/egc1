@@ -1,6 +1,6 @@
 import {audioInfo, readWav, scanWavRegions, energyEnvelope, splitEnvelope, encodeWav, hashFile, hashBytes} from './audio.js';
 import {Inference, PIPELINE, FRONTEND} from './inference.js';
-import {classifyScores, roleEvidence, nameHints, applyHints, BANKS} from './taxonomy.js';
+import {classifyScores, roleEvidence, nameHints, applyHints, bankSummary, BANKS} from './taxonomy.js';
 import {Folder, validAnalysis, validEmbedding, validOverrides, validBanks} from './storage.js';
 
 const IMPORT_METHOD = 'browser-silence-rms-1:5ms:350ms:20ms:50ms';
@@ -11,18 +11,39 @@ export class Pipeline {
     constructor(emit, decode, options = {}) {
         this.emit = emit;
         this.decode = decode;
-        this.inference = new Inference(emit, options);
+        this.inference = new Inference(event => {
+            if (event.type === 'stage') { this.stage(event.stage); }
+            else { this.emit(event); }
+        }, options);
         this.pause = false;
         this.running = false;
         this.folder = null;
     }
-    stage(stage, extra = {}) { this.emit({type: 'stage', stage, ...extra}); }
+    stage(stage, extra = {}) {
+        this.recordStage();
+        this.stageName = stage.replace(/ \(\d+\/\d+\)$/, '').replace(/Processing region \d+\/\d+/, 'Processing region');
+        this.stageStarted = performance.now();
+        this.emit({type: 'stage', stage, ...extra});
+    }
+    recordStage() {
+        if (this.stageName && this.stageTimings) {
+            this.stageTimings[this.stageName] = (this.stageTimings[this.stageName] || 0) + performance.now() - this.stageStarted;
+        }
+        this.stageName = null;
+    }
     async run({handle, files, options}) {
         this.running = true;
         this.options = options;
+        this.stageTimings = {};
+        this.stageName = null;
+        const runStarted = performance.now();
         this.pipeline = `${PIPELINE}:${options.beats ? 'beat-this-c5c1466e08abdb03' : 'no-beats'}`;
-        this.folder = new Folder(handle, files, this.emit);
+        this.folder = new Folder(handle, files, event => {
+            if (event.type === 'stage') { this.stage(event.stage); }
+            else { this.emit(event); }
+        });
         try {
+            this.stage('Opening saved metadata');
             await this.folder.initialise({locked:true});
             this.stage('Finding samples in your folder');
             const sources = await this.folder.scan();
@@ -37,9 +58,10 @@ export class Pipeline {
             const config = await this.folder.json('.egc1/banks.json');
             if (!config) { await this.folder.writeJson('.egc1/banks.json', BANKS); }
             else { validBanks(config); }
+            this.banks = config || BANKS;
             const policy = (await this.inference.prototypesPromise).policy;
             this.policy = {...policy, frontend: FRONTEND, nameHints: options.hints, manualTags: true, browserRuntime: 'onnxruntime-web-1.22.0'};
-            this.report = {version: 1, started: new Date().toISOString(), pipeline: this.pipeline, policy: this.policy,
+            this.report = {version: 1, started: new Date().toISOString(), pipeline: this.pipeline, policy: this.policy, options: {...options},
                 sourceFiles: sources.length, completedFiles: 0, readySamples: 0, reusedAnalysis: 0,
                 newEmbeddings: 0, reusedEmbeddings: 0, separatedRegions: 0, kits: 0, hits: 0, failures: [], predictions: {}};
             const paths = new Set(sources.map(source => source.path));
@@ -86,7 +108,9 @@ export class Pipeline {
                             }
                         } catch (error) { this.failure(item.path, error, item.id, item.provenance); }
                         this.emit({type: 'progress', completed: index, within: (region + 1) / regions.length, total: sources.length, report: this.report});
-                        await this.publish();
+                        // The final region is published below with the completed-file
+                        // counter. Avoid writing the entire catalogue twice per file.
+                        if (region + 1 < regions.length) { await this.publish(); }
                         await sleep();
                         if (this.pause && region + 1 < regions.length) { sourceComplete = false; break; }
                     }
@@ -111,6 +135,12 @@ export class Pipeline {
             this.report.state = this.pause ? 'paused' : this.manifest.state;
             this.report.finished = new Date().toISOString();
             await this.publish();
+            this.stage('Summarising banks');
+            this.summary = await this.summariseBanks();
+            this.report.bankSummary = this.summary;
+            this.recordStage();
+            this.report.timings = {elapsedMs: performance.now() - runStarted, stagesMs: {...this.stageTimings},
+                metadataWriteMs: this.folder.writeMilliseconds, metadataWrites: this.folder.writeCount};
             await this.folder.writeJson('.egc1/browser/report.json', this.report);
             this.emit({type: this.pause ? 'paused' : 'complete', report: this.report, rows: [...this.rows.values()]});
         } finally { this.running = false; }
@@ -289,6 +319,36 @@ export class Pipeline {
         this.manifest.entries = [...this.rows.values()];
         await this.folder.writeJson('.egc1/library.json', this.manifest);
     }
+    async summariseBanks() {
+        const kits = new Map();
+        if (this.banks.banks.flat().some(bank => bank.kind === 'kits')) {
+            for (const row of this.rows.values()) {
+                if (row.state !== 'ready' || kits.has(row.id)) { continue; }
+                try {
+                    const kit = await this.folder.json(`.egc1/kits/${row.id}/kit.json`);
+                    if (kit?.version !== 1 || kit.sourceId !== row.id || kit.rate !== row.rate ||
+                        !Array.isArray(kit.hits) || !kit.hits.length || kit.hits.length > 8) { continue; }
+                    let valid = true;
+                    for (const hit of kit.hits) {
+                        if (!Number.isInteger(hit.start) || !Number.isInteger(hit.end) || hit.start < 0 ||
+                            hit.end <= hit.start || hit.end > row.samples || typeof hit.file !== 'string' ||
+                            !/^[^./\\][^/\\]*\.wav$/i.test(hit.file)) { valid = false; break; }
+                        const audio = await this.folder.file(`.egc1/kits/${row.id}/${hit.file}`).catch(error => {
+                            if (error.name === 'NotFoundError') { return null; } throw error;
+                        });
+                        if (!audio) { valid = false; break; }
+                        const info = await audioInfo(audio);
+                        if (info.frames !== hit.end - hit.start || info.rate !== row.rate || info.channels !== row.channels) { valid = false; break; }
+                    }
+                    if (valid) { kits.set(row.id, kit.hits.length); }
+                } catch (error) {
+                    // An unreadable old kit must not prevent the sample report.
+                    this.emit({type: 'notice', message: `Could not include the kit for ${row.path} in the bank summary: ${error.message}`});
+                }
+            }
+        }
+        return bankSummary(this.banks, this.rows.values(), kits);
+    }
     async correct(id, tags) {
         if (this.running || !this.folder) { throw new Error('Pause processing before changing a classification.'); }
         if (!/^[0-9a-f]{64}$/.test(id) || !Array.isArray(tags) || !tags.length || tags.some(tag => !/^[a-z0-9-]+$/.test(tag))) { throw new Error('Invalid classification correction.'); }
@@ -298,7 +358,10 @@ export class Pipeline {
         this.overrides = overrides;
         for (const row of this.rows.values()) { if (row.id === id) { row.tags = tags; row.tagsSource = 'manual'; row.needsReview = false; } }
         await this.publish();
-        this.emit({type: 'corrected', id, tags});
+        this.summary = await this.summariseBanks();
+        this.report.bankSummary = this.summary;
+        await this.folder.writeJson('.egc1/browser/report.json', this.report);
+        this.emit({type: 'corrected', id, tags, summary: this.summary});
     }
 }
 

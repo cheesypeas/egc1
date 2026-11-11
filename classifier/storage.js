@@ -27,6 +27,8 @@ export class Folder {
         this.outputs = new Map();
         this.emit = emit;
         this.initialised = false;
+        this.writeMilliseconds = 0;
+        this.writeCount = 0;
     }
     async initialise({locked = false} = {}) {
         if (this.initialised) { return; }
@@ -91,19 +93,25 @@ export class Folder {
         catch (error) { throw new Error(`Cannot read ${path}. Restore or move the damaged metadata before retrying.`); }
     }
     async write(path, value) {
-        safeRelative(path);
-        path = canonicalPath(path);
-        if (!path.startsWith('.egc1/')) { throw new Error('Only .egc1 metadata and derived audio may be written.'); }
-        const blob = value instanceof Blob ? value : new Blob([value]);
-        if (this.handle) {
-            // createWritable commits on close, retaining the old file until then.
-            const file = await this.entry(path, true);
-            const stream = await file.createWritable();
-            try { await stream.write(blob); await stream.close(); }
-            catch (error) { try { await stream.abort(); } catch (_) {} throw error; }
-        } else {
-            this.outputs.set(path, blob);
-            this.emit({type: 'output', path, blob});
+        const started = performance.now();
+        try {
+            safeRelative(path);
+            path = canonicalPath(path);
+            if (!path.startsWith('.egc1/')) { throw new Error('Only .egc1 metadata and derived audio may be written.'); }
+            const blob = value instanceof Blob ? value : new Blob([value]);
+            if (this.handle) {
+                // createWritable commits on close, retaining the old file until then.
+                const file = await this.entry(path, true);
+                const stream = await file.createWritable();
+                try { await stream.write(blob); await stream.close(); }
+                catch (error) { try { await stream.abort(); } catch (_) {} throw error; }
+            } else {
+                this.outputs.set(path, blob);
+                this.emit({type: 'output', path, blob});
+            }
+        } finally {
+            this.writeMilliseconds += performance.now() - started;
+            this.writeCount++;
         }
     }
     async writeJson(path, value) { await this.write(path, new Blob([JSON.stringify(value, null, 2) + '\n'], {type: 'application/json'})); }

@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "status": "open accuracy failures; reference marks, not passing assertions",
+  "source": "egc1-reviews.json exported 2026-11-11T23:10:33.380Z",
+  "pipeline": "browser-library-1:core-802b986:left-zero-crossings:frontend-r8brain-v1:beat-this-c5c1466e08abdb03",
+  "cases": [
+    {
+      "sourcePath": "FM1 - Track 02.wav",
+      "sourceId": "b1682ab8c05301a35784673b64f5ff3a757ff72b2b083714d7c028eb223f6591",
+      "analysisId": "2f2148c0d4d190c85257322c58046598e49e44c4747d57020f237fdfc73756d1",
+      "rate": 44100,
+      "region": {"start": 273018, "end": 478065},
+      "humanPlaybackBounds": {"start": 273919, "end": 470951},
+      "humanTags": ["loops", "drum-loop"],
+      "predictedTags": ["loops", "drum-loop"],
+      "issues": ["leading-silence", "loop-timing"],
+      "cachedLoopEndConfidence": 0
+    },
+    {
+      "sourcePath": "FM1 - Track 06.wav",
+      "sourceId": "0defac8b538ff985d8e64afad54b6209ea1693962db0140f8e9aa4ec5e2a0ca9",
+      "analysisId": "1d8e96de9f380800e3108cdb57846e83fdb80ca350fa7177245e2149561a9277",
+      "rate": 44100,
+      "region": {"start": 236718, "end": 262025},
+      "humanPlaybackBounds": {"start": 237621, "end": 259698},
+      "humanTags": ["drums", "hat"],
+      "predictedTags": ["drums", "cymbal"],
+      "issues": ["leading-silence", "trailing-silence"]
+    }
+  ]
+}

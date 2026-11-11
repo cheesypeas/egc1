@@ -17,6 +17,20 @@ compatible completed analysis. Listen with the play buttons, filter/search the
 results and use **edit category** to save a manual override. An individual bad
 file is reported without stopping the remaining sources.
 
+Completed runs show all twelve banks, including empty banks, using this folder's
+`banks.json`. Sample counts deduplicate identical audio and allow membership in
+several banks. Extracted-kit banks show both kit and sound counts; sample banks
+show source sounds rather than the instrument's assembled drum-kit choices.
+Manual category corrections refresh the summary. These are prepared catalogue
+counts; the instrument still checks audio when loading it.
+
+The saved processing report includes elapsed time, wall time spent in each
+displayed processing stage, and metadata-write time/count. Stage times include
+subsequent bookkeeping until the next stage begins; write time overlaps those
+stages. The report's own final write is excluded. The mono core reduces native
+analysis work; CLAP and Beat This! already infer on one channel. Long samples
+use up to three CLAP crops, and beat tracking repeats the source for context.
+
 Classification, silence splitting and loop timing are enabled by default.
 Filename/folder hints can be disabled for acoustic-only evaluation. Extracted
 hit kits are optional. Silence-separated regions remain ordinary samples;

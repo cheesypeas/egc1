@@ -106,6 +106,23 @@ try:
                 assert page.locator('#stat-ready').inner_text() == '3'
                 assert page.locator('#stat-regions').inner_text() == '2'
                 assert page.locator('#stat-failed').inner_text() == '1'
+                assert page.locator('#bank-summary').is_visible()
+                assert page.locator('#bank-groups li').count() == 12
+                assert page.locator('#bank-groups .empty-bank').count() > 0
+                assert '3 unique samples' in page.locator('#bank-summary-note').inner_text()
+                with page.expect_download() as report_download:
+                    page.locator('#export-report').click()
+                report_path = root / 'report.json'
+                report_download.value.save_as(report_path)
+                report = json.loads(report_path.read_text())
+                assert report['bankSummary']['uniqueSamples'] == 3
+                assert report['timings']['elapsedMs'] > 0
+                assert report['timings']['metadataWrites'] > 0
+                page.set_viewport_size({'width': 390, 'height': 844})
+                assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
+                page.screenshot(path='/tmp/egc-processing-summary-mobile.png', full_page=True)
+                page.set_viewport_size({'width': 1440, 'height': 1000})
+                page.screenshot(path='/tmp/egc-processing-summary-desktop.png', full_page=True)
                 with page.expect_download() as download:
                     page.locator('#export-metadata').click()
                 archive = root / 'metadata.zip'

@@ -1512,3 +1512,13 @@ tbody tr.selected td:first-child {
         transition:none!important
     }
 }
+.bank-summary { padding:24px; margin-bottom:24px; }
+.bank-summary > p { color:var(--muted); margin:0 0 20px; }
+#bank-groups { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:20px; }
+.bank-group h3 { font-size:16px; margin:0 0 10px; }
+.bank-group ul { list-style:none; padding:0; margin:0; }
+.bank-group li { display:flex; flex-direction:column; gap:4px; padding:10px 12px; margin:6px 0; border:1px solid #304030; }
+.bank-group strong { color:#a5e8a5; font-size:14px; }
+.bank-group .empty-bank { border-color:#a58a46; background:#201e12; }
+.bank-group .empty-bank strong { color:#ead08c; }
+@media (max-width:800px) { #bank-groups { grid-template-columns:1fr; } }

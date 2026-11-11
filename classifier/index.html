@@ -78,6 +78,11 @@
                     <div class="stat"><span class="stat-label">KITS</span><strong id="stat-kits">0</strong><span id="kit-detail">drum hit collections</span></div>
                     <div class="stat" id="failed-stat"><span class="stat-label">NOT PROCESSED</span><strong id="stat-failed">0</strong><span>see details below</span></div>
                 </div>
+                <section class="panel bank-summary" id="bank-summary" aria-labelledby="bank-summary-title" hidden>
+                    <div class="panel-heading"><h2 id="bank-summary-title">Bank summary</h2></div>
+                    <p id="bank-summary-note"></p>
+                    <div id="bank-groups"></div>
+                </section>
                 <div class="panel library-panel">
                     <div class="library-toolbar"><div class="filters" id="filters" aria-label="Filter sounds"></div><label class="search"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="m10.5 10.5 4 4"/></svg><input type="search" id="search" placeholder="find a sample…" aria-label="Search samples"></label></div>
                     <div class="table-wrap"><table><thead><tr><th class="play-cell"><span class="sr-only">Audition</span></th><th>sample</th><th>suggested category</th><th>source</th><th class="duration-cell">length</th><th><span class="sr-only">State</span></th></tr></thead><tbody id="result-rows"></tbody></table></div>
