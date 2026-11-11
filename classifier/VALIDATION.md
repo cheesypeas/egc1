@@ -115,6 +115,44 @@ Pipeline checks also cover category-correction summaries, duplicate placements,
 custom bank predicates and pausing after an intermediate region. These checks
 verify the new workflow; they do not resolve the recorded accuracy failures.
 
+### Follow-up accuracy audit
+
+The reviewed Track 02 loop exposes an acceptance error, beyond a model prediction
+error. Its internal beat intervals are predominantly 24,696 frames (107.14 BPM),
+but the wrap interval is 32,175 frames. `ResolveLoopBarReference` derives the saved
+25,630.875-frame period (103.23 BPM) from full region length divided by eight
+beats. Its confidence of 1 measures downbeat-phase voting, without checking that
+the source duration closes the beat cycle. `BuildLoopBoundaryAnalysis` then skips
+end-fragment detection because `HasReliableLoopGrid` accepts that confidence.
+The user's marked end is region frame 197,933, exactly an existing transient;
+the padded region instead ends at frame 205,047. A reliable beat phase cannot be
+used as evidence that the extracted region is a complete, correctly bounded loop.
+
+Fresh runs of the current WASM core, without model inference, reproduce seven
+transients on Track 06's region 0–40,925, thirty on its region 413,158–428,125,
+and twelve on Track 25's region 387,198–420,645. These match the saved analysis.
+The thirty-marker case has roughly 8 ms spacing through one sustained region;
+the Track 25 case includes a run of roughly 9.2 ms intervals. These are concrete
+candidates for the reported repeated triggering during decay. The detector
+combines two spectral-flux windows, adaptive spectral whitening and compression,
+a 6 ms minimum spacing and 2/10 ms before/after energy checks. Those checks can
+admit local fluctuations without establishing a distinct new musical event.
+Increasing minimum spacing alone would risk discarding genuine flams and ghosts.
+
+The review adapter also auditions full extracted regions; it does not apply
+`LoopPlaybackEnd`. Any boundary correction must be evaluated through the sampler
+playback path as well as region review, with the two behaviours made explicit.
+Another consistency issue remains: native cuts and pitch use the left channel,
+while CLAP still chooses the strongest channel. Classification can therefore
+describe a channel discarded by instrument playback.
+
+Recommended next work is to establish and test the preparation contract: separate
+analysis context from playable bounds; estimate timing from performed intervals;
+validate loop seams even with a confident beat phase; distinguish attack
+candidates from accepted chops; and expose uncertainty instead of implying that
+all automatically found regions have valid musical boundaries. These are proposed
+pipeline changes, not changes deployed with the bank-summary update.
+
 ## Left-channel analysis and zero-crossing cuts — 2026-11-11
 
 - Rebuilt the included ToySampler `802b986` analysis snapshot with pinned
