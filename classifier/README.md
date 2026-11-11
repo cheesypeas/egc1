@@ -56,6 +56,16 @@ future native preparation can deliberately recompute them rather than silently
 mixing the browser resampler with the PC ffmpeg frontend. The compiled analysis
 core and Beat This! preprocessing/postprocessing use the existing native source.
 
+Pitch, transient, vocal, gate and beat analysis use the left source channel,
+matching mono instrument playback. Transient and vocal cuts search backwards
+up to 2 ms for a quieter zero crossing without moving past the detected attack.
+Original stereo files and derived region audio retain their channel layout;
+acoustic classification still uses its existing strongest-channel frontend.
+The updated pipeline automatically refreshes older cut analysis while reusing
+compatible classifier embeddings and preserving manual labels and feedback.
+Prepare packs separately: each folder's audio and `.egc1` can be combined with
+other prepared packs on the updated instrument, without a merge or combined pass.
+
 ## Hosting and development
 
 Serve this repository as ordinary static files over HTTPS. GitHub Pages works;
@@ -105,7 +115,10 @@ This tests real public model downloads, silence-separated regions, corrupt-file
 isolation, pause/resume, ZIP integrity, saved analysis reuse and fresh inference
 offline. The test starts/stops its own localhost server and uses a temporary
 browser profile. `--profile /outside/the/repository/profile` can retain downloaded
-models between test runs. Additional validation results are in `VALIDATION.md`.
+models between test runs. `--models /path/to/models` serves the pinned model
+bytes locally instead of downloading them; their SHA-256 checks still apply.
+It also checks the real WASM left-only analysis, beat frontend, shared gate cuts
+and invalidation of older analysis. Additional validation results are in `VALIDATION.md`.
 
 See `THIRD_PARTY_NOTICES.txt` and the linked licence/source files for attribution.
 

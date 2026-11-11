@@ -1,9 +1,9 @@
 {
   "source": "ToySampler",
-  "commit": "8891981",
+  "commit": "802b986720cdd4f00f66fe57e37352fcfb7346a9",
   "files": {
-    "SampleAnalysis.cpp": "a3114b22d88a5bc499c8f986fb3f30daefccb8cc2b0975ef64b9b832d5082df6",
-    "SampleAnalysis.h": "9237d9e14e3c42fafb2372e514ee10b9a6aade112382c12259e57e8433abc25a",
+    "SampleAnalysis.cpp": "9bb79928f36e70cd5000db54a3828f556e0427bd30368bbab83e3cd071396b93",
+    "SampleAnalysis.h": "43854fb3abebd2698e4b3d4c23ae79e5e706e3b6bf33384b2609860f64a2ef1f",
     "BeatAnalysis.h": "2a20b2f7da523361521b996df82831f2b8aa7ff52adcc84316de9b605d9c88a0",
     "LoopBeatContext.cpp": "69305da33c98d9b9ccc4b1f1267b09867c5846f852f29ed73a63cb0f0f3839e4"
   },

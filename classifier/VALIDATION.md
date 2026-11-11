@@ -76,3 +76,24 @@ button styling match the processing page. The open-library folder controls becom
 compact while keeping all actions accessible. Desktop and 390px mobile layouts,
 primary button contrast, playback, native review import, folder persistence and
 processing-to-review handoff passed after applying the shared stylesheet.
+
+## Left-channel analysis and zero-crossing cuts — 2026-11-11
+
+- Rebuilt the included ToySampler `802b986` analysis snapshot with pinned
+  Emscripten 4.0.10. Corresponding-source SHA-256 hashes were verified.
+- Real WASM checks in a separate Chrome profile confirm that louder unrelated
+  right-channel hits cannot change pitch, transients, vocal cuts, gate strengths
+  or Beat This! frontend features. Source channel counts remain intact.
+- Isolated attacks retain zero-amplitude cut positions shared with the gate.
+  Left-only silence remains silent to timing analysis even with right-channel audio.
+- Fresh pitch/loop/vocal versions 5/8/2 are reusable; old pipeline identities
+  and analysis versions are rejected for recomputation.
+- All 16 JavaScript primitive/review tests and shared review-asset checks pass.
+- Full generated-folder Chrome regression passed: classification, separated
+  regions, malformed-file isolation, pause/resume, ZIP CRC validation, saved
+  analysis reuse and fresh offline inference after reload. This run served the
+  pinned model bytes locally; the production model URLs are unchanged.
+- Shell cache advanced to v9 so the updated JS and WASM install together.
+
+These checks establish execution and compatibility, not listening quality across
+all sample packs or deployment of the updated instrument firmware/plugin.

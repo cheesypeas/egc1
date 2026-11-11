@@ -76,8 +76,8 @@ int RefineAttack(const float * const * audio, int channels, int samples,
     {
         foot--;
     }
-    // Keep one source sample before the detected leading edge. There is no
-    // frame rounding or arbitrary millisecond pre-roll in the saved position.
+    // Keep one source sample before the detected leading edge, without frame
+    // rounding. Crossing refinement follows detection and contrast checks.
     return std::max(0, foot - 1);
 }
 
@@ -145,7 +145,7 @@ void FindTransients(SampleAnalysis & result, const float * const * audio, int ch
     {
         return;
     }
-    // Analyse channels separately: averaging antiphase stereo can erase attacks.
+    // Analyse the audible left channel; right-channel events must not create cuts.
     for (int channel = 0; channel < channels; channel++)
     {
         // The short window resolves quiet flams hidden under a loud hit in the
@@ -198,6 +198,13 @@ void FindTransients(SampleAnalysis & result, const float * const * audio, int ch
     auto end = std::unique(result.transients.begin(), result.transients.end(),
                           [minimumGap](int a, int b) { return b - a < minimumGap; });
     result.transients.erase(end, result.transients.end());
+    int minimum = 0;
+    for (auto & position : result.transients)
+    {
+        const int attack = position;
+        position = FindCutZeroCrossing(audio[0], result.numSamples, position, result.sampleRate, minimum);
+        minimum = attack + 1; // Never borrow a crossing from the preceding hit.
+    }
 }
 
 void FindPitch(SampleAnalysis & result, const float * const * audio, int channels)
@@ -297,6 +304,33 @@ void FindPitch(SampleAnalysis & result, const float * const * audio, int channel
 
 } // namespace
 
+int FindCutZeroCrossing(const float * audio, int samples, int position, double sampleRate, int minimumPosition)
+{
+    if (audio == nullptr || samples <= 0 || position < 0 || position >= samples ||
+        !std::isfinite(sampleRate) || sampleRate < 8000.0 || sampleRate > 192000.0)
+    {
+        return position;
+    }
+    const int first = std::max({0, minimumPosition, position - static_cast<int>(sampleRate * 0.002)});
+    for (int at = position; at >= first; --at)
+    {
+        if (audio[at] == 0.0f)
+        {
+            return at;
+        }
+        if (at > first && std::isfinite(audio[at]) && std::isfinite(audio[at - 1]) &&
+            std::signbit(audio[at]) != std::signbit(audio[at - 1]))
+        {
+            const int candidate = std::abs(audio[at - 1]) <= std::abs(audio[at]) ? at - 1 : at;
+            if (std::abs(audio[candidate]) <= std::abs(audio[position]))
+            {
+                return candidate;
+            }
+        }
+    }
+    return position;
+}
+
 SampleAnalysis AnalyseSample(const float * const * audio, int channels, int samples,
                             double sampleRate, SampleAnalysisKind kind, bool includeBeats)
 {
@@ -308,6 +342,7 @@ SampleAnalysis AnalyseSample(const float * const * audio, int channels, int samp
     {
         return result;
     }
+    channels = 1;
     if (kind == SampleAnalysisKind::Pitch)
     {
         FindPitch(result, audio, channels);
@@ -353,6 +388,7 @@ void BuildLoopBoundaryAnalysis(SampleAnalysis & analysis, const float * const * 
     {
         return;
     }
+    channels = 1;
     const int end = points.back();
     if (end <= 0 || end >= analysis.numSamples) { return; }
     const int tail = analysis.numSamples - end;
@@ -509,6 +545,7 @@ void BuildGateAnalysis(SampleAnalysis & analysis, const float * const * audio, i
     {
         return;
     }
+    channels = 1;
     const int window = std::max(1, static_cast<int>(analysis.sampleRate * 0.012));
     const int attack = std::max(1, static_cast<int>(analysis.sampleRate * 0.002));
     float maximum = 0.0f;
@@ -631,6 +668,7 @@ void BuildVocalCuts(SampleAnalysis & analysis, const float * const * audio, int 
     {
         return;
     }
+    channels = 1;
     const int hop = std::max(1, static_cast<int>(analysis.sampleRate * 0.002));
     const int frames = (analysis.numSamples + hop - 1) / hop;
     std::vector<double> power(static_cast<size_t>(frames), 0.0);
@@ -753,9 +791,10 @@ void BuildVocalCuts(SampleAnalysis & analysis, const float * const * audio, int 
     const int minimumGap = std::max(1, static_cast<int>(analysis.sampleRate * 0.075));
     for (const auto & candidate : candidates)
     {
-        const auto next = std::lower_bound(analysis.vocalStarts.begin(), analysis.vocalStarts.end(), candidate.start);
-        if ((next != analysis.vocalStarts.end() && *next - candidate.start < minimumGap) ||
-            (next != analysis.vocalStarts.begin() && candidate.start - *(next - 1) < minimumGap))
+        const int start = FindCutZeroCrossing(audio[0], analysis.numSamples, candidate.start, analysis.sampleRate);
+        const auto next = std::lower_bound(analysis.vocalStarts.begin(), analysis.vocalStarts.end(), start);
+        if ((next != analysis.vocalStarts.end() && *next - start < minimumGap) ||
+            (next != analysis.vocalStarts.begin() && start - *(next - 1) < minimumGap))
         {
             continue;
         }
@@ -763,10 +802,10 @@ void BuildVocalCuts(SampleAnalysis & analysis, const float * const * audio, int 
         {
             break;
         }
-        analysis.vocalStarts.insert(next, candidate.start);
+        analysis.vocalStarts.insert(next, start);
         if (analysis.vocalDefaults.size() < 8)
         {
-            analysis.vocalDefaults.push_back(candidate.start);
+            analysis.vocalDefaults.push_back(start);
         }
     }
     std::sort(analysis.vocalDefaults.begin(), analysis.vocalDefaults.end());

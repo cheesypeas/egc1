@@ -151,7 +151,7 @@ export function validOverrides(value) {
 
 export function validAnalysis(data, id, pipeline, info) {
     if (!data || data.version !== 1 || data.id !== id || data.pipeline !== pipeline || data.channels !== info.channels) { return false; }
-    for (const [name, version] of [['pitch', 2], ['loop', 7], ['vocal', 1]]) {
+    for (const [name, version] of [['pitch', 5], ['loop', 8], ['vocal', 2]]) {
         const item = data[name];
         if (!item || item.version !== 1 || item.analysisVersion !== version || item.samples !== info.frames || item.rate !== info.rate ||
             !Number.isFinite(item.root) || item.root < 0 || item.root > 127 || !Number.isFinite(item.confidence) || item.confidence < 0 || item.confidence > 1.00001) { return false; }

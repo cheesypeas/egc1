@@ -20,16 +20,23 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--chrome', required=True, help='Path to Chrome/Chromium executable')
 parser.add_argument('--port', type=int, default=8780, help='Local test port; keep stable to reuse model cache')
 parser.add_argument('--profile', help='Optional external test profile for model-cache reuse')
+parser.add_argument('--models', type=Path, help='Optional directory containing pinned audio_model.onnx and toy-beat-this.onnx')
 args = parser.parse_args()
 repo = Path(__file__).resolve().parents[2]
 class Handler(SimpleHTTPRequestHandler):
     def log_message(self, format, *values):
         pass
+    def translate_path(self, path):
+        if args.models and path in ['/__test_models/audio_model.onnx', '/__test_models/toy-beat-this.onnx']:
+            return str(args.models / path.rsplit('/', 1)[1])
+        return super().translate_path(path)
 
 handler = functools.partial(Handler, directory=str(repo))
 server = ThreadingHTTPServer(('127.0.0.1', args.port), handler)
 threading.Thread(target=server.serve_forever, daemon=True).start()
 url = f'http://127.0.0.1:{server.server_port}/classifier/'
+if args.models:
+    url += '?models=local'
 
 try:
     with tempfile.TemporaryDirectory(prefix='sample-lab-test-') as temporary:
@@ -63,7 +70,7 @@ try:
                 errors = []
                 methods = []
                 page.on('pageerror', lambda error: errors.append(str(error)))
-                page.on('console', lambda message: print('Browser:', message.text, flush=True) if message.type == 'error' else None)
+                page.on('console', lambda message: print('Browser:', message.text, flush=True) if message.type == 'error' or message.text.startswith('Test progress:') else None)
                 context.on('request', lambda request: methods.append(request.method))
                 # Refresh only this dedicated test profile's page cache, retaining model weights.
                 page.goto(url.rsplit('classifier/', 1)[0])
@@ -73,6 +80,11 @@ try:
                 }''')
                 page.goto(url)
                 print('Page loaded', flush=True)
+                page.evaluate('''() => {
+                    const stage = document.querySelector('#stage');
+                    new MutationObserver(() => console.log('Test progress:', stage.textContent)).observe(stage, {subtree: true, childList: true, characterData: true});
+                }''')
+                print(page.evaluate("async () => (await import('./tests/analysis-browser.js')).checkAnalysis()"), flush=True)
                 page.evaluate("navigator.serviceWorker.addEventListener('message', e => console.error('SW', JSON.stringify(e.data)))")
                 try:
                     page.wait_for_function('navigator.serviceWorker.controller !== null', timeout=30000)

@@ -45,8 +45,16 @@ struct SampleAnalysis
 };
 
 // Allocates and scans audio; call only on the analysis worker, never in playback.
+// All analysis uses source channel zero, matching the sampler's left-only PCM.
 SampleAnalysis AnalyseSample(const float * const * audio, int channels, int samples,
                             double sampleRate, SampleAnalysisKind kind, bool includeBeats = true);
+
+// Nearest crossing at/before a cut, within 2 ms. Select the quieter of the two
+// adjacent frames without moving past the attack or minimumPosition, or raising
+// the boundary amplitude. If none exists, retain the cut. Never changes source
+// PCM or the loop's frame count.
+int FindCutZeroCrossing(const float * audio, int samples, int position, double sampleRate,
+                        int minimumPosition = 0);
 
 // Positions and distances are source sample frames. Search crosses the loop seam.
 int SnapLoopStart(const SampleAnalysis * analysis, double position, int loopLength,

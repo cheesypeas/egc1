@@ -3,7 +3,7 @@ import createAnalysis from './vendor/analysis.mjs';
 import {hashBytes, spectrogram, strongestChannel} from './audio.js';
 
 export const FRONTEND = 'clap48k-r8brain-slaney-repeatpad-three-crops-web-v1';
-export const PIPELINE = 'browser-library-1:core-8891981:frontend-r8brain-v1';
+export const PIPELINE = 'browser-library-1:core-802b986:left-zero-crossings:frontend-r8brain-v1';
 ort.env.wasm.numThreads = 1; // Works on ordinary static hosting without COOP/COEP headers.
 ort.env.wasm.wasmPaths = new URL('./vendor/', import.meta.url).href;
 ort.env.logLevel = 'warning';
@@ -136,7 +136,8 @@ export class Inference {
         const native = await this.native(), pointers = [];
         let handle = 0;
         try {
-            for (const channel of channels) {
+            // Transfer only the audible left channel. Retain source channel count in metadata.
+            for (const channel of channels.slice(0, 1)) {
                 const ptr = native._malloc(channel.byteLength);
                 if (!ptr) { throw new Error('Audio is too large for available browser memory.'); }
                 pointers.push(ptr); native.HEAPF32.set(channel, ptr / 4);

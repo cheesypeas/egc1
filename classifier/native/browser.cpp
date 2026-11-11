@@ -19,8 +19,7 @@ namespace {
 struct Prepared
 {
     float * left;
-    float * right;
-    int channels;
+    int channels; // Original file layout; processing retains only left.
     int samples;
     double rate;
     int cycles = 0;
@@ -30,24 +29,17 @@ struct Prepared
     std::vector<float> resampled;
     std::string json;
     const float * pointers[2];
-    Prepared(float * a, float * b, int count, int frames, double sr) :
-        left(a), right(b), channels(count), samples(frames), rate(sr), pointers {a, b}
+    Prepared(float * a, int count, int frames, double sr) :
+        left(a), channels(count), samples(frames), rate(sr), pointers {a, nullptr}
     {
         float peak = 0.0f;
-        for (int channel = 0; channel < channels; channel++)
-        {
-            for (int i = 0; i < samples; i++) { peak = std::max(peak, std::abs(pointers[channel][i])); }
-        }
+        for (int i = 0; i < samples; i++) { peak = std::max(peak, std::abs(left[i])); }
         if (peak > 0.0f)
         {
-            for (auto * data : {left, right})
-            {
-                if (data == nullptr) { continue; }
-                for (int i = 0; i < samples; i++) { data[i] *= 1.0f / peak; }
-            }
+            for (int i = 0; i < samples; i++) { left[i] *= 1.0f / peak; }
         }
-        pitch = AnalyseSample(pointers, channels, samples, rate, SampleAnalysisKind::Pitch, false);
-        loop = AnalyseSample(pointers, channels, samples, rate, SampleAnalysisKind::Loop, false);
+        pitch = AnalyseSample(pointers, 1, samples, rate, SampleAnalysisKind::Pitch, false);
+        loop = AnalyseSample(pointers, 1, samples, rate, SampleAnalysisKind::Loop, false);
     }
 };
 
@@ -65,9 +57,9 @@ void Array(std::ostream & out, const std::vector<T> & values)
 
 void AnalysisJson(std::ostream & out, const SampleAnalysis & value, SampleAnalysisKind kind)
 {
-    out << "{\"version\":1,\"analysisVersion\":" << (kind == SampleAnalysisKind::Pitch ? 2 : kind == SampleAnalysisKind::Vocal ? 1 : 7)
+    out << "{\"version\":1,\"analysisVersion\":" << (kind == SampleAnalysisKind::Pitch ? 5 : kind == SampleAnalysisKind::Vocal ? 2 : 8)
         << ",\"analysisRole\":\"" << (kind == SampleAnalysisKind::Pitch ? "pitch" : kind == SampleAnalysisKind::Vocal ? "vocal" : "loop")
-        << "\",\"analysisImplementation\":\"toysampler-wasm-v1\",\"rate\":" << value.sampleRate
+        << "\",\"analysisImplementation\":\"toysampler-wasm-v2-left-zero-crossings\",\"rate\":" << value.sampleRate
         << ",\"samples\":" << value.numSamples << ",\"hasRoot\":" << (value.hasRoot ? "true" : "false")
         << ",\"root\":" << value.rootMidi << ",\"confidence\":" << value.pitchConfidence << ",\"transients\":";
     Array(out, value.transients);
@@ -110,18 +102,18 @@ std::vector<float> converted;
 }
 
 extern "C" {
-Prepared * toy_analyse(float * left, float * right, int channels, int samples, double rate)
+Prepared * toy_analyse(float * left, float *, int channels, int samples, double rate)
 {
     if (channels < 1 || channels > 2 || samples <= 0 || samples >= rate * 60 || rate < 8000 || rate > 192000) { return nullptr; }
-    return new Prepared(left, right, channels, samples, rate);
+    return new Prepared(left, channels, samples, rate);
 }
 void toy_destroy(Prepared * value) { delete value; }
 
 const char * toy_json(Prepared * value, double embeddedRoot)
 {
     auto vocal = value->loop;
-    BuildVocalCuts(vocal, value->pointers, value->channels);
-    BuildGateAnalysis(vocal, value->pointers, value->channels, SampleAnalysisKind::Vocal);
+    BuildVocalCuts(vocal, value->pointers, 1);
+    BuildGateAnalysis(vocal, value->pointers, 1, SampleAnalysisKind::Vocal);
     auto playbackPitch = value->pitch;
     if (embeddedRoot >= 0.0 && embeddedRoot <= 127.0)
     {
@@ -144,16 +136,8 @@ const char * toy_json(Prepared * value, double embeddedRoot)
 int toy_beat_features(Prepared * value)
 {
     if (value->samples / value->rate < .15 || value->loop.transients.size() < 4) { return 0; }
-    int selected = 0;
-    double strongest = -1;
-    for (int channel = 0; channel < value->channels; channel++)
-    {
-        double energy = 0.0;
-        for (int i = 0; i < value->samples; i++) { energy += value->pointers[channel][i] * value->pointers[channel][i]; }
-        if (energy > strongest) { strongest = energy; selected = channel; }
-    }
     value->cycles = std::max(3, static_cast<int>(std::ceil(8.0 / (value->samples / value->rate))) + 2);
-    auto audio = Resample(value->pointers[selected], value->samples, value->rate, 22050.0, value->cycles);
+    auto audio = Resample(value->left, value->samples, value->rate, 22050.0, value->cycles);
     MelSpectrogram frontend;
     const auto features = frontend.compute(audio);
     value->features.clear();
@@ -187,7 +171,7 @@ void toy_apply_beats(Prepared * value, const float * beat, const float * downbea
         target.erase(std::unique(target.begin(), target.end()), target.end());
     }
     BuildLoopGrid(result);
-    BuildLoopBoundaryAnalysis(result, value->pointers, value->channels);
+    BuildLoopBoundaryAnalysis(result, value->pointers, 1);
 }
 
 int toy_resample(const float * source, int count, double from, double to)
