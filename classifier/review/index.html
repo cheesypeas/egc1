@@ -78,6 +78,13 @@
           <div class="transport"><div><button id="play" class="play-button">▶ Play <kbd>Space</kbd></button><button id="previous" class="secondary" aria-label="Previous item">←</button><button id="next" class="secondary" aria-label="Next item">→</button><label class="check"><input type="checkbox" id="loop"> Loop</label></div><div><label for="volume" class="muted">Level</label><input id="volume" type="range" min="0" max="100" value="70" aria-label="Playback level"></div></div>
           <div class="marked-playback"><span id="marked-range">Mark an attack or end to audition your cut.</span><button id="loop-join" class="quiet" title="Play just before your end mark, then loop back to your attack mark." disabled>▶ Loop join <kbd>J</kbd></button></div>
         </section>
+        <section id="chop-review" class="panel chop-review" aria-labelledby="chop-title">
+          <div class="section-heading"><div><h2 id="chop-title">Chop points</h2><p>Select a point to play from it. Click a waveform marker or use the numbered buttons.</p></div><span id="chop-count" class="muted"></span></div>
+          <div class="chop-controls"><button id="chop-previous" class="quiet" type="button">← Previous chop</button><button id="chop-next" class="quiet" type="button">Next chop →</button><label class="check"><input id="chop-isolate" type="checkbox"> Stop at next chop</label><label class="check"><input id="chop-show-excluded" type="checkbox"> Show excluded detections</label></div>
+          <div id="chop-points" class="chop-points" aria-label="Chop positions"></div>
+          <p id="chop-selected" role="status">Choose a chop to audition.</p>
+          <div class="chop-controls"><button id="chop-toggle" class="quiet" type="button" disabled>Remove selected chop</button><button id="chop-add" class="quiet" type="button">Add at playhead</button><span class="muted">Edits are saved with Approve &amp; next.</span></div>
+        </section>
         <details class="boundaries panel" id="precise-cuts"><summary>Correct the start and end if needed</summary>
           <div class="section-heading"><div><h2>At the edges</h2><p>Click to mark · drag to pan · scroll to zoom</p></div><label class="zoom-label">Window <select id="zoom" aria-label="Attack and end waveform window"></select></label></div>
           <div class="edge-grid">

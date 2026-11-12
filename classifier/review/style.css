@@ -1105,6 +1105,12 @@ a { color:var(--mint); text-underline-offset:3px; }
 .item-heading>div { min-width:0; }
 .item-heading h1,.details { overflow-wrap:anywhere; }
 .review-reasons { font-size:12px; line-height:1.6; color:var(--amber); }
+.chop-controls { display:flex; flex-wrap:wrap; align-items:center; gap:10px; font-size:12px; }
+.chop-points { display:flex; flex-wrap:wrap; gap:6px; margin:14px 0; max-height:180px; overflow-y:auto; }
+.chop-points button { padding:7px 9px; font-size:12px; font-variant-numeric:tabular-nums; }
+.chop-points button.excluded { border-style:dashed; color:var(--muted); }
+#chop-selected { font-size:12px; color:var(--muted); }
+.chop-review .section-heading { flex-wrap:wrap; }
 @media (max-width:720px) {
   .sidebar { display:block; }
   .queue-tools { display:grid; grid-template-columns:auto minmax(0,1fr); align-items:center; }

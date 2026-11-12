@@ -145,7 +145,7 @@ try:
                     audio.setnchannels(1);audio.setsampwidth(2);audio.setframerate(8000);audio.writeframes(pcm)
                 loopid=hashlib.sha256(loopfile.read_bytes()).hexdigest()
                 looprow=dict(id=loopid,path='loop.wav',bytes=loopfile.stat().st_size,rate=8000,samples=16800,channels=1,state='needs-review',tags=['loops','drum-loop'],preparation=dict(reasons=['uncertain-loop-phrase'],bounds=dict(start=400,end=16400),attacks=dict(accepted=[400,4400,8400,12400],rejected=[])))
-                role=dict(samples=16800,rate=8000,transients=[400,4400,8400,12400],beats=[],downbeats=[],hasRoot=False)
+                role=dict(samples=16800,rate=8000,transients=[400,4400,6400,8400,12400],beats=[],downbeats=[],hasRoot=False)
                 (metadata/'entries'/f'{loopid}.json').write_text(json.dumps(dict(version=1,id=loopid,pipeline='test',pitch=role,loop=role,vocal=role)))
                 (metadata/'workspace.json').write_text(json.dumps(dict(version=1,state='complete',entries=[looprow])))
                 (metadata/'library.json').write_text(json.dumps(dict(version=1,state='complete',entries=[])))
@@ -157,6 +157,44 @@ try:
                 page.locator('#curate-add').click()
                 page.wait_for_function("document.querySelector('#admission-status').textContent.includes('Enter the beat count')")
                 assert not page.evaluate("window.egcReview.request('/api/export')")['admissions']
+                page.wait_for_function('state.original!==null')
+                assert page.locator('#chop-count').inner_text() == '4 kept'
+                marks=page.evaluate('JSON.stringify(state.draft.boundaries)')
+                page.locator('#chop-show-excluded').check()
+                page.locator('#chop-points button[data-frame="6400"]').click()
+                assert page.evaluate('state.player.offset') == .8
+                assert page.locator('#chop-toggle').inner_text() == 'Keep selected chop'
+                assert page.locator('#chop-count').inner_text() == '4 kept'
+                page.locator('#chop-show-excluded').uncheck()
+                page.locator('#chop-points button[data-frame="4400"]').click()
+                actual=page.evaluate('({low:state.player.low,high:state.player.high,offset:state.player.offset,loop:state.player.source.loop})')
+                assert actual == dict(low=.55,high=2.05,offset=.55,loop=False),actual
+                assert page.locator('#loop').is_checked(), 'Chop audition must not change full-loop preferences'
+                page.locator('#chop-isolate').check()
+                assert page.evaluate('state.player.high') == 1.05
+                page.locator('#chop-next').click()
+                assert page.evaluate('state.player.offset') == 1.05
+                assert page.evaluate('JSON.stringify(state.draft.boundaries)') == marks
+                # The marker in the overview also selects the corresponding chop.
+                page.locator('#chop-previous').click()
+                box=page.locator('#overview').bounding_box()
+                page.locator('#overview').click(position=dict(x=box['width']*.5,y=box['height']*.5))
+                assert page.evaluate('state.chopFrame') == 8400
+                page.locator('#chop-toggle').click()
+                assert page.locator('#chop-count').inner_text() == '3 kept'
+                assert page.locator('#chop-toggle').inner_text() == 'Keep selected chop'
+                page.locator('#chop-toggle').click()
+                assert page.locator('#chop-count').inner_text() == '4 kept'
+                page.locator('#chop-toggle').click()
+                page.evaluate("stop();state.view='marks';state.seek=1.3")
+                page.locator('#chop-add').click()
+                assert page.evaluate('chopFrames()') == [400,4400,10400,12400]
+                # Browser drafts retain chop edits without a separate save operation.
+                page.reload()
+                page.locator('#review-folder-input').set_input_files(str(folder))
+                page.wait_for_function('state.original!==null')
+                assert page.evaluate('chopFrames()') == [400,4400,10400,12400]
+                assert page.locator('#chop-count').inner_text() == '4 kept'
                 page.locator('#admission-beats').fill('4')
                 page.locator('#curate-add').click()
                 page.wait_for_function("document.querySelector('#current-pack-counts').textContent.startsWith('1 ready')")
@@ -169,6 +207,7 @@ try:
                     assert output['samples']==16000 and output['provenance']['start']==400 and output['provenance']['end']==16400
                     assert analysis['loop']['beats']==[0,4000,8000,12000]
                     assert analysis['loop']['beatPeriod']==4000
+                    assert analysis['loop']['transients']==[0,4000,10000,12000]
                 assert not errors,errors
                 print('PASS: excluded-only review, marked correction, explicit approval, native output, published audition, reflagging, rejection and retained decisions',flush=True)
             finally:

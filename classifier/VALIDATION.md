@@ -401,3 +401,22 @@ audio has a different start and a loud incompatible right channel. Both yield
 the expected mono frames and exact first/last samples, with a closed one-second
 loop. The legacy loop-end fallback and invalid-cut refusal also pass. All seven
 JavaScript suites and the existing browser correction/admission workflow pass.
+
+## Selectable chop audition and correction — 2026-11-12
+
+The browser review now has numbered chop buttons, previous/next controls and
+waveform-marker selection. Audition starts at the exact source frame and stops
+at the playable end, or optionally the next kept chop. It plays once without
+changing saved phrase bounds or the full-loop preference. Kept and excluded
+detector points remain distinct; auditioning an excluded detection does not add
+it to the map. A selected point can be removed/restored, and the playhead can
+insert a missing point. Marked previews route the left channel to match export.
+
+Chrome checks exact playback offsets/endpoints, one-shot audition, previous/next
+selection, waveform selection, excluded-candidate audition, unchanged boundaries,
+remove/restore/add operations, draft recovery after reload and the corrected
+transients in the published analysis. Existing bank totals, parent/sibling
+navigation, manual publication, source hashes, metadata ZIPs and mobile layout
+still pass. The common player/styling copies match; all JavaScript suites and
+the Python auditioner tests pass. No source audio/model outputs are reprocessed
+or modified by auditioning points.

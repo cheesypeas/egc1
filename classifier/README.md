@@ -227,6 +227,20 @@ context; **Load published sound** plays the actual exported audio. Synth reviews
 emphasise starts/category/root, with tail trimming optional. Loops show the end
 and require an explicit beat count; loop playback and join audition stay available.
 
+**Chop points** lists the kept transients as numbered buttons, with times relative
+to the playable start. Select a button or waveform marker to play from that exact
+point to the cut's end. **Previous chop** and **Next chop** move through the points;
+**Stop at next chop** auditions an individual slice. Chop auditions play once and
+leave the full-loop setting and phrase boundaries unchanged. Marked previews use
+the audible left channel, matching published audio; Original/Context retain stereo.
+
+**Remove selected chop** excludes a false trigger; **Keep selected chop** restores
+it or includes a detector candidate. **Show excluded detections** makes rejected
+candidates available in the list. **Add at playhead** inserts a missing point.
+The edited map is kept as a draft across reloads and saved with **Approve & next**,
+alongside category/boundary corrections and their original analysis evidence.
+The source-seconds text field remains available for precise numerical edits.
+
 The library dashboard shows ready and pending counts in every category, including
 zeroes, with the lowest counts first. Ready means published audio, not a saved
 judgement. Standalone sounds and kit hits are counted; identical audio across

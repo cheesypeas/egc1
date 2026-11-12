@@ -12,7 +12,7 @@ const state = {
   activeCategory: null, search: "", category: "", folder: "", reason: "", sort: "source", view: "primary", primary: null,
   original: null, context: null, gain: null, player: null, seek: 0,
   serial: 0, saving: false, drafts: new Map(), buffers: new Map(), bufferBytes: new Map(), ranges: {}, dirty: false, animation: null,
-  centers: {}, waveFocus: {}, playbackSerial: 0, restartQueueAfterDraft: false,
+  centers: {}, waveFocus: {}, playbackSerial: 0, restartQueueAfterDraft: false, chopFrame: null,
 };
 
 function title(value) {
@@ -273,6 +273,105 @@ function renderJudgement() {
     if(next && next.id!==id){await select(next,$("autoplay").checked);}else{emptyQueue("Decision saved. No more review items in this view. Choose another category or sibling folder.");}
     renderQueue();saveLocal();
   }, rememberDraft, () => queueItems().map(item=>item.id));
+  renderChops();
+}
+
+function chopFrames() {
+  const field=$('admission-transients');
+  if(!field || !state.current) { return []; }
+  return [...new Set(field.value.split(/[\s,]+/).filter(Boolean).map(value=>Math.round(Number(value)*state.current.rate))
+    .filter(frame=>Number.isInteger(frame) && frame>=0 && frame<state.current.sourceFrames))].sort((a,b)=>a-b);
+}
+
+function chopRange() {
+  const item=state.current;
+  return [state.draft.boundaries.attackFrame ?? item.startFrame,state.draft.boundaries.endFrame ?? item.endFrame];
+}
+
+function visibleChops() {
+  if(!state.current) { return []; }
+  const [start,end]=chopRange(), points=chopFrames();
+  if($('chop-show-excluded')?.checked) { points.push(...state.current.transients); }
+  if(state.chopFrame!==null) { points.push(state.chopFrame); }
+  return [...new Set(points)].filter(frame=>frame>=start && frame<end).sort((a,b)=>a-b);
+}
+
+function renderChops() {
+  if(!$('chop-review') || !state.current) { return; }
+  const points=visibleChops(), kept=new Set(chopFrames()), [start]=chopRange();
+  const index=points.indexOf(state.chopFrame), list=$('chop-points');
+  const focused=list.contains(document.activeElement);
+  const scrollTop=list.scrollTop;
+  list.replaceChildren();
+  for(const [i,frame] of points.entries()) {
+    const button=document.createElement('button'), included=kept.has(frame);
+    button.type='button';button.dataset.frame=String(frame);
+    button.className=included ? 'quiet' : 'quiet excluded';
+    button.classList.toggle('selected',frame===state.chopFrame);
+    button.setAttribute('aria-pressed',String(frame===state.chopFrame));
+    button.textContent=`${i+1} · ${((frame-start)/state.current.rate).toFixed(3)}s${included ? '' : ' · excluded'}`;
+    button.title=`Play from source ${(frame/state.current.rate).toFixed(6)} seconds${included ? '' : ' · not in the chop map'}`;
+    button.disabled=!state.original;
+    button.addEventListener('click',()=>auditionChop(frame));
+    list.append(button);
+    if(focused && frame===state.chopFrame) { button.focus({preventScroll:true}); }
+  }
+  list.scrollTop=scrollTop;
+  if(!points.length) { list.textContent='No chops in this cut. Add one at the playhead or show excluded detections.'; }
+  $('chop-count').textContent=`${points.filter(frame=>kept.has(frame)).length} kept`;
+  $('chop-selected').textContent=index<0 ? 'Choose a chop to audition.' :
+    `Chop ${index+1} of ${points.length} · ${((state.chopFrame-start)/state.current.rate).toFixed(6)} s into the cut${kept.has(state.chopFrame) ? '' : ' · excluded detection'}`;
+  $('chop-previous').disabled=!state.original || !points.length || index===0;
+  $('chop-next').disabled=!state.original || !points.length || index===points.length-1;
+  $('chop-toggle').disabled=index<0;
+  $('chop-toggle').textContent=kept.has(state.chopFrame) ? 'Remove selected chop' : 'Keep selected chop';
+  $('chop-add').disabled=!state.original;
+}
+
+async function auditionChop(frame) {
+  if(!state.original || !state.current) { return; }
+  const [start,end]=chopRange();
+  if(frame<start || frame>=end) { return; }
+  state.chopFrame=frame;
+  const points=chopFrames(), next=$('chop-isolate').checked ? points.find(at=>at>frame && at<end) ?? end : end;
+  stop();state.view='marks';state.seek=frame/state.current.rate;
+  state.centers.overview=state.waveFocus.overview=frame/state.current.rate;
+  renderChops();renderViews();drawAll();
+  await play('marks',[frame/state.current.rate,next/state.current.rate],true);
+}
+
+function writeChops(points) {
+  $('admission-transients').value=[...new Set(points)].sort((a,b)=>a-b).map(frame=>(frame/state.current.rate).toFixed(6)).join(', ');
+  $('admission-transients').dispatchEvent(new Event('input',{bubbles:true}));
+}
+
+if($('chop-review')) {
+  $('admission-transients').addEventListener('input',()=>{changed();renderChops();drawAll();});
+  for(const [id,direction] of [['chop-previous',-1],['chop-next',1]]) {
+    $(id).addEventListener('click',()=>{
+      const points=visibleChops(), index=points.indexOf(state.chopFrame);
+      const frame=points[index<0 ? direction>0 ? 0 : points.length-1 : index+direction];
+      if(frame!==undefined) { void auditionChop(frame); }
+    });
+  }
+  $('chop-points').addEventListener('keydown',event=>{
+    if(['ArrowLeft','ArrowRight'].includes(event.key)) {
+      event.preventDefault();event.stopPropagation();$(event.key==='ArrowLeft' ? 'chop-previous' : 'chop-next').click();
+    }
+  });
+  $('chop-show-excluded').addEventListener('change',()=>{renderChops();drawAll();});
+  $('chop-isolate').addEventListener('change',()=>{if(state.chopFrame!==null) { void auditionChop(state.chopFrame); }});
+  $('chop-toggle').addEventListener('click',()=>{
+    if(state.chopFrame===null) { return; }
+    stop();const points=chopFrames();
+    writeChops(points.includes(state.chopFrame) ? points.filter(frame=>frame!==state.chopFrame) : [...points,state.chopFrame]);
+  });
+  $('chop-add').addEventListener('click',()=>{
+    const [start,end]=chopRange();
+    const frame=Math.round(playhead()*state.current.rate)+(state.view==='primary' ? state.current.startFrame : 0);
+    if(frame<start || frame>=end) { return status('Choose a playhead position inside the playable cut first.',true); }
+    state.chopFrame=frame;writeChops([...chopFrames(),frame]);
+  });
 }
 
 function toggleCategory(category) {
@@ -337,6 +436,7 @@ function stop(preserve = false) {
     state.seek = preserve ? playhead() : 0;
     player.source.onended = null;
     player.source.stop();
+    player.source.disconnect();player.left?.disconnect();
     state.player = null;
   } else if (!preserve) { state.seek = 0; }
   $("play").firstChild.textContent = "▶ Play ";
@@ -357,7 +457,7 @@ function viewAudio(view = state.view) {
   return { buffer: state.original, low: 0, high: item.sourceDuration };
 }
 
-async function play(view = state.view, bounds = null) {
+async function play(view = state.view, bounds = null, once = false) {
   if (!state.current || !state.primary) { return; }
   const serial = state.serial;
   const playbackSerial = ++state.playbackSerial;
@@ -379,13 +479,17 @@ async function play(view = state.view, bounds = null) {
   if (!sameView) { state.centers.overview = offset; state.waveFocus.overview = offset; }
   const source = ctx.createBufferSource();
   source.buffer = audio.buffer;
-  source.connect(state.gain);
-  source.loop = $("loop").checked;
+  let left=null;
+  if(audio.buffer.numberOfChannels>1 && ['marks','primary'].includes(view)) {
+    left=ctx.createChannelSplitter(audio.buffer.numberOfChannels);
+    source.connect(left);left.connect(state.gain,0,0);
+  } else { source.connect(state.gain); }
+  source.loop = !once && $("loop").checked;
   source.loopStart = low;
   source.loopEnd = high;
-  state.player = { source, offset, started: ctx.currentTime, low, high, bounds };
+  state.player = { source, left, offset, started: ctx.currentTime, low, high, bounds };
   source.onended = () => {
-    if (state.player?.source === source) { state.player = null; state.seek = 0; $("play").firstChild.textContent = "▶ Play "; drawAll(); }
+    if (state.player?.source === source) { source.disconnect();left?.disconnect();state.player = null; state.seek = 0; $("play").firstChild.textContent = "▶ Play "; drawAll(); }
   };
   if (source.loop) { source.start(0, offset); } else { source.start(0, offset, high - offset); }
   $("play").firstChild.textContent = "Ⅱ Pause ";
@@ -466,8 +570,8 @@ function waveform(canvas, buffer, low, high, options = {}) {
     ctx.strokeStyle = "#f4faf5"; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height - 14); ctx.stroke();
   };
-  const key = [low, high, width, height, scale, options.marker, options.reference,
-    options.region?.join(","), options.transients?.join(",")].join(":");
+  const key = [low, high, width, height, scale, options.marker, options.reference, options.chop,
+    options.region?.join(","), options.transients?.join(","), options.chops?.join(',')].join(":");
   const cached = waveformCache.get(canvas);
   if (buffer && cached?.buffer === buffer && cached.key === key) {
     ctx.clearRect(0, 0, width, height); ctx.drawImage(cached.image, 0, 0, width, height); head(); return;
@@ -536,6 +640,8 @@ function waveform(canvas, buffer, low, high, options = {}) {
     ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height - 14); ctx.stroke(); ctx.setLineDash([]);
   };
   for (const marker of options.transients || []) { line(marker, "#8a9c8755", [2, 4]); }
+  for (const marker of options.chops || []) { line(marker, '#b7e594'); }
+  if(options.chop!==null && options.chop!==undefined) { line(options.chop,'#f4d175'); }
   if (options.region) {
     const start = Math.max(0, (options.region[0] - low) / (high - low) * width);
     const end = Math.min(width, (options.region[1] - low) / (high - low) * width);
@@ -633,8 +739,11 @@ function drawAll() {
   const item = state.current;
   const audio = viewAudio();
   const overviewRange = waveRange("overview");
+  const chopOffset=state.view==='primary' ? item.startFrame : 0;
   waveform($("overview"), audio.buffer, ...overviewRange, {
     head: playhead(),
+    chops:chopFrames().map(frame=>(frame-chopOffset)/item.rate),
+    chop:state.chopFrame===null ? null : (state.chopFrame-chopOffset)/item.rate,
     transients: state.view === "primary" && item.kind === "hit" ? [] : item.transients.map((frame) => (frame - (state.view === "primary" ? item.startFrame : 0)) / item.rate),
     region: state.view === "marks" ? [audio.low, audio.high] :
       state.view !== "primary" && (item.kind === "hit" || item.origin === "separated") ? [item.startSeconds, item.endSeconds] : null,
@@ -692,7 +801,7 @@ async function select(item, autoplay = false) {
   rememberDraft();
   stop();
   const serial = ++state.serial;
-  state.current = item;
+  state.current = item;state.chopFrame=null;
   state.draft = JSON.parse(JSON.stringify(state.drafts.get(item.id) || item.review || {
     tags: [...(item.currentTags || item.prediction || [])].filter(tag => tag !== "unclassified"), certainty: "clear", quality: null, reasons: [], notes: "", boundaries: {},
   }));
@@ -737,7 +846,7 @@ async function select(item, autoplay = false) {
     ]);
     if (serial !== state.serial) { return; }
     state.primary = primary; state.original = original;
-    renderViews(); drawAll();
+    renderViews(); drawAll();renderChops();
     status(state.dirty ? "Unsaved judgement · Enter saves and moves on." : state.session.publicationSupported ? "Mark corrections if needed, check the category, then Approve & next or Reject & next." : "Space to listen. Save your corrected category and cuts when ready.");
     if (autoplay) { await play(); }
   } catch (error) {
@@ -904,6 +1013,15 @@ for (const name of ["overview", "attack", "tail"]) {
     const seconds = range[0] + (event.clientX - bounds.left) / bounds.width * (range[1] - range[0]);
     state.waveFocus[name] = seconds;
     if (name === "overview") {
+      if($('chop-review')) {
+        const point=(state.view==='primary' ? state.current.startFrame : 0)+seconds*state.current.rate;
+        const [start,end]=chopRange();
+        const nearest=[...new Set([...visibleChops(),...state.current.transients])].filter(frame=>frame>=start && frame<end)
+          .sort((a,b)=>Math.abs(a-point)-Math.abs(b-point))[0];
+        if(nearest!==undefined && Math.abs(nearest-point)<=state.current.rate*(range[1]-range[0])*8/bounds.width) {
+          void auditionChop(nearest);return;
+        }
+      }
       stop(); state.seek = seconds; play(state.view); return;
     }
     if (!state.original) { return; }
