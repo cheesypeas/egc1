@@ -82,7 +82,7 @@ export class ReviewLibrary {
         return {id, kind: row.browserKind === 'hit' ? 'hit' : 'sample', origin: p ? 'separated' : 'source', provenance: p || null, archived: Boolean(row.archived), analysisId: row.id,
             mediaKey: row.id, sourceKey: sourceId, path: row.path, sourcePath, filename: sourcePath,
             rate: row.rate, channels: row.channels, startFrame: start, endFrame: end, startSeconds: start / row.rate, endSeconds: end / row.rate,
-            sourceFrames, sourceDuration: sourceFrames / row.rate, duration: row.samples / row.rate,
+            sourceFrames, sourceDuration: sourceFrames / row.rate, duration: row.samples / row.rate, root:analysis.pitch.hasRoot ? analysis.pitch.root : null,
             transients: (analysis.loop.transients || []).map(frame => frame + start), currentTags: row.tags || [], prediction: useSemantic ? semantic.tags : row.tags || [],
             policy: useSemantic ? semantic.policy : row.classification || this.manifest.classification || {}, roleEvidence: semantic?.roleEvidence || row.browserRoleEvidence || null,
             publication: row.state === 'ready' && !this.manifest.entries.some(entry => entry.state === 'ready' && entry.id === (row.output?.id || row.id)) ? 'needs-review' : row.state,
@@ -123,7 +123,7 @@ export class ReviewLibrary {
     item(id) { const item = this.items.get(id); if (!item || !ID.test(id)) { throw new Error('Unknown review item'); } return item; }
     session() {
         const ordered = [...this.items.values()].sort((a,b) => a.sourcePath.localeCompare(b.sourcePath,undefined,{numeric:true}) || a.startFrame-b.startFrame || a.id.localeCompare(b.id));
-        const fields = ['id','kind','duration','sourceDuration','channels','startSeconds','endSeconds','rate','startFrame','endFrame','sourceFrames','transients','origin','sourceKey','mediaKey','archived','publication','preparation','admission','filename','sourcePath','currentTags','prediction','policy','roleEvidence'];
+        const fields = ['id','kind','duration','sourceDuration','channels','startSeconds','endSeconds','rate','startFrame','endFrame','sourceFrames','transients','origin','sourceKey','mediaKey','archived','publication','preparation','admission','filename','sourcePath','currentTags','prediction','policy','roleEvidence','root'];
         const items = ordered.map(item => ({...Object.fromEntries(fields.map(key => [key,item[key]])), instrument:this.flags(item.id),review:publicReview(this.data.reviews[item.id]),exposed:Object.hasOwn(this.data.exposures,item.id)}));
         return {items, fingerprint: this.fingerprint, taxonomy: CATEGORIES, canUndo: Boolean(this.data.history.length), token: '', fileCount: this.manifest.sourceFiles || this.manifest.entries.length,
             packCount: new Set([...this.items.values()].map(item => item.sourcePath.split('/').slice(0,-1).join('/'))).size, skipped: this.skipped, flagged: this.manifest.entries.filter(row => row.state === 'failed').length, queuePolicy: 'egc1-curation-v2',
@@ -175,9 +175,10 @@ export class ReviewLibrary {
                 await this.withholdItem(item, 'human-review');
             }
             return this.commit(() => {
-            const candidate = item.kind === 'hit' || item.origin === 'separated' ? item.startFrame : item.transients[0] || 0;
-            const boundaries = {...payload.boundaries, method: 'visual-cut-review', attackCandidateFrame: candidate, endCandidateFrame: item.endFrame};
-            for (const [name, proposed] of [['attack',candidate],['end',item.endFrame]]) {
+            const candidate = item.preparation?.bounds ? item.startFrame+item.preparation.bounds.start : item.kind === 'hit' || item.origin === 'separated' ? item.startFrame : item.transients[0] || 0;
+            const proposedEnd = item.preparation?.bounds ? item.startFrame+item.preparation.bounds.end : item.endFrame;
+            const boundaries = {...payload.boundaries, method: 'visual-cut-review', attackCandidateFrame: candidate, endCandidateFrame: proposedEnd};
+            for (const [name, proposed] of [['attack',candidate],['end',proposedEnd]]) {
                 const frame = boundaries[name + 'Frame'];
                 if (frame != null) { boundaries[name + 'OffsetFrames'] = frame - proposed; boundaries[name + 'OffsetMs'] = (frame - proposed) * 1000 / item.rate; }
             }

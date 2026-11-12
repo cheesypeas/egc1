@@ -111,9 +111,14 @@ function renderOrganisation() {
   }
 }
 
+function reviewStorageKey() {
+  return "egc1-review:"+(state.session.folderKey ? encodeURIComponent(state.session.folderKey)+":" : "")+state.session.fingerprint;
+}
+
 function saveLocal() {
   try {
-    localStorage.setItem("egc1-review:" + state.session.fingerprint, JSON.stringify({
+    localStorage.setItem(reviewStorageKey(), JSON.stringify({
+      folderKey:state.session.folderKey,
       mode: state.mode, organisation:{filter:state.filter,search:state.search,category:state.category,folder:state.folder,reason:state.reason,sort:state.sort}, current: state.current?.id, drafts: Array.from(state.drafts), savedAt: Date.now(),
       queuePolicy: state.session.queuePolicy,
     }));
@@ -130,11 +135,16 @@ function rememberDraft() {
 function changed() {
   state.dirty = true;
   rememberDraft();
-  status("Unsaved judgement · Enter saves and moves on.");
+  status(window.egcReview?.curateCurrent ? "Corrections ready · Enter approves and moves on." : "Unsaved judgement · Enter saves and moves on.");
 }
 
 function renderQueue() {
   renderOrganisation();
+  window.egcReview?.renderLibrary?.(state, {focusCategory:tag=>{
+    state.category=tag;state.filter="pending";state.search=state.folder=state.reason="";
+    if(!queueItems().length){const previousMode=state.mode;state.mode=state.mode==="sample"?"hit":"sample";if(!queueItems().length){state.mode=previousMode;}}
+    applyQueueFilters();
+  }});
   const items = allItems();
   const reviewed = items.filter((item) => state.session.publicationSupported ? item.publication === "ready" : item.review).length;
   $("progress-text").textContent = state.session.publicationSupported ? "included" : "reviewed";
@@ -161,6 +171,7 @@ function renderQueue() {
   for (const item of visible) {
     const button = document.createElement("button");
     button.className = "queue-item" + (item.id === state.current?.id ? " active" : "");
+    button.dataset.reviewId=item.id;
     const dot = document.createElement("span");
     dot.className = "state-dot" + (item.review ? item.review.certainty === "clear" ? " done" : " unsure" : "");
     const text = document.createElement("span");
@@ -254,7 +265,14 @@ function renderJudgement() {
     state.session = await request("/api/session?refresh=1");
     const item = state.session.items.find(item => item.id === id);
     if (item) { await select(item); }
-  }, boundaries => { state.draft.boundaries = boundaries; marksChanged(); });
+  }, boundaries => { state.draft.boundaries = boundaries; marksChanged(); }, async previousQueue => {
+    const id=state.current?.id;
+    state.drafts.delete(id);state.dirty=false;
+    state.session=await request("/api/session?refresh=1");
+    const next=pickAfter(id,previousQueue);
+    if(next && next.id!==id){await select(next,$("autoplay").checked);}else{emptyQueue("Decision saved. No more review items in this view. Choose another category or sibling folder.");}
+    renderQueue();saveLocal();
+  }, rememberDraft, () => queueItems().map(item=>item.id));
 }
 
 function toggleCategory(category) {
@@ -416,6 +434,7 @@ function marksChanged() {
   const audio = viewAudio();
   state.centers.overview = state.waveFocus.overview = (audio.low + audio.high) / 2;
   renderOffsets(); renderViews(); drawAll();
+  renderJudgement();
   if (playing) { play(); }
 }
 
@@ -542,7 +561,12 @@ function waveform(canvas, buffer, low, high, options = {}) {
 }
 
 function attackCandidate() {
+  if(state.current.preparation?.bounds){return state.current.startFrame+state.current.preparation.bounds.start;}
   return state.current.kind === "hit" || state.current.origin === "separated" ? state.current.startFrame : (state.current.transients[0] || 0);
+}
+
+function endCandidate() {
+  return state.current.preparation?.bounds ? state.current.startFrame+state.current.preparation.bounds.end : state.current.endFrame;
 }
 
 function waveDuration(name) {
@@ -598,7 +622,7 @@ function renderWaveNavigation(name, range) {
     button.disabled = slider.disabled || (Number(button.dataset.direction) < 0 ? range[0] <= 0 : range[1] >= duration);
   }
   if (name !== "overview") {
-    const candidate = (name === "attack" ? attackCandidate() : state.current.endFrame) / state.current.rate;
+    const candidate = (name === "attack" ? attackCandidate() : endCandidate()) / state.current.rate;
     $(name + "-reference").disabled = boundaryFrame(name) === null;
     $(name + "-location").textContent = `Source ${range[0].toFixed(4)}–${range[1].toFixed(4)} s${candidate < range[0] || candidate > range[1] ? " · cut off-screen" : ""}`;
   }
@@ -616,7 +640,7 @@ function drawAll() {
       state.view !== "primary" && (item.kind === "hit" || item.origin === "separated") ? [item.startSeconds, item.endSeconds] : null,
   });
   const attack = attackCandidate() / item.rate;
-  const end = item.endFrame / item.rate;
+  const end = endCandidate() / item.rate;
   const transients = item.transients.map((frame) => frame / item.rate);
   waveform($("attack"), state.original, ...waveRange("attack"),
     { marker: attack, reference: state.draft.boundaries.attackFrame === null ? null : state.draft.boundaries.attackFrame / item.rate, transients });
@@ -635,7 +659,7 @@ function animate() {
 
 function renderOffsets() {
   if (!state.current) { return; }
-  for (const [name, candidate] of [["attack", attackCandidate()], ["end", state.current.endFrame]]) {
+  for (const [name, candidate] of [["attack", attackCandidate()], ["end", endCandidate()]]) {
     const frame = state.draft.boundaries[name + "Frame"];
     const output = $(name + "-offset");
     if (frame === null) { output.textContent = "Unmarked"; }
@@ -673,8 +697,8 @@ async function select(item, autoplay = false) {
     tags: [...(item.currentTags || item.prediction || [])].filter(tag => tag !== "unclassified"), certainty: "clear", quality: null, reasons: [], notes: "", boundaries: {},
   }));
   state.draft.boundaries = {
-    attackFrame: state.draft.boundaries?.attackFrame ?? null,
-    endFrame: state.draft.boundaries?.endFrame ?? null,
+    attackFrame: state.draft.boundaries?.attackFrame ?? (item.preparation?.bounds ? item.startFrame+item.preparation.bounds.start : null),
+    endFrame: state.draft.boundaries?.endFrame ?? (item.preparation?.bounds ? item.startFrame+item.preparation.bounds.end : null),
   };
   state.draft.reasons = state.draft.reasons || [];
   state.draft.notes = state.draft.notes || "";
@@ -692,10 +716,14 @@ async function select(item, autoplay = false) {
   if (item.roleEvidence?.mode === "alternatives") {
     $("details").textContent += ` · Suggested alternatives: ${item.roleEvidence.candidates.map(title).join(" or ")}`;
   }
-  $("item-review-reasons").textContent = itemReasons(item).map(reason => reason.replaceAll("-", " ")).join(" · ");
+  $("item-review-reasons").textContent = (item.publication==="ready" && item.admission ? "Resolved on approval: " : "")+itemReasons(item).map(reason => reason.replaceAll("-", " ")).join(" · ");
   $("item-review-reasons").hidden = !itemReasons(item).length;
   renderSourceOrigin(item);
   $("view-primary").firstChild.textContent = item.kind === "hit" ? "Hit " : "Sample ";
+  if(item.preparation?.bounds) {
+    $("view-primary").firstChild.textContent="Analysis region ";
+    $("view-marks").firstChild.textContent="Playable cut ";
+  }
   $("view-source").hidden = item.kind !== "hit" && item.origin !== "separated";
   $("view-context").hidden = item.kind !== "hit" && item.origin !== "separated";
   $("workspace").hidden = false;
@@ -710,11 +738,17 @@ async function select(item, autoplay = false) {
     if (serial !== state.serial) { return; }
     state.primary = primary; state.original = original;
     renderViews(); drawAll();
-    status(state.dirty ? "Unsaved judgement · Enter saves and moves on." : state.session.publicationSupported ? "Check the category and cuts, save, then approve the corrected sound below." : "Space to listen. Save your corrected category and cuts when ready.");
+    status(state.dirty ? "Unsaved judgement · Enter saves and moves on." : state.session.publicationSupported ? "Mark corrections if needed, check the category, then Approve & next or Reject & next." : "Space to listen. Save your corrected category and cuts when ready.");
     if (autoplay) { await play(); }
   } catch (error) {
     if (serial === state.serial) { status(error.message, true); }
   }
+}
+
+function resetReviewFolder() {
+  if(state.session){rememberDraft();}
+  stop();state.serial++;state.current=null;state.draft=null;state.drafts=new Map();state.dirty=false;
+  state.mode="sample";state.filter="unreviewed";state.search=state.category=state.folder=state.reason="";state.sort="source";
 }
 
 function navigate(direction) {
@@ -780,10 +814,10 @@ async function switchMode(mode) {
   else { emptyQueue(); }
 }
 
-function emptyQueue() {
+function emptyQueue(message) {
   stop(); state.serial++; state.current = null; state.primary = null; state.original = null;
   $("workspace").hidden = true; $("loading").hidden = false;
-  $("loading").textContent = "No sounds match these filters. Change the review status, folder or category, or clear the search.";
+  $("loading").textContent = message || "No sounds match these filters. Change the review status, folder or category, or clear the search.";
   renderQueue();
 }
 
@@ -924,7 +958,7 @@ for (const button of document.querySelectorAll("[data-center]")) {
   button.addEventListener("click", () => {
     if (!state.current) { return; }
     const name = button.dataset.center;
-    const frame = button.dataset.target === "reference" ? boundaryFrame(name) : name === "attack" ? attackCandidate() : state.current.endFrame;
+    const frame = button.dataset.target === "reference" ? boundaryFrame(name) : name === "attack" ? attackCandidate() : endCandidate();
     if (frame !== null) { panWave(name, frame / state.current.rate); }
   });
 }
@@ -974,7 +1008,7 @@ $("export").addEventListener("click", async () => {
 document.addEventListener("keydown", (event) => {
   if (!state.current || event.altKey || event.metaKey || (event.ctrlKey && event.key !== "Enter")) { return; }
   if (/INPUT|TEXTAREA|SELECT/.test(event.target.tagName)) {
-    if (event.ctrlKey && event.key === "Enter") { event.preventDefault(); save(); }
+    if (event.ctrlKey && event.key === "Enter") { event.preventDefault(); window.egcReview?.curateCurrent ? window.egcReview.curateCurrent("add") : save(); }
     return;
   }
   const key = event.key.toLowerCase();
@@ -982,8 +1016,8 @@ document.addEventListener("keydown", (event) => {
   if (key === " ") { state.player ? stop(true) : play(); }
   else if (key === "arrowleft") { navigate(-1); }
   else if (key === "arrowright") { navigate(1); }
-  else if (key === "enter") { save(); }
-  else if (key === "s") { save(true); }
+  else if (key === "enter") { window.egcReview?.curateCurrent ? window.egcReview.curateCurrent("add") : save(); }
+  else if (key === "s") { window.egcReview?.curateCurrent ? window.egcReview.curateCurrent("later") : save(true); }
   else if (key === "z") { $("undo").click(); }
   else if (/^[1-5]$/.test(key)) { toggleCategory(Object.keys(categoryNames)[Number(key) - 1]); }
   else if (roleKeys.includes(key) && state.session.taxonomy[state.activeCategory]?.[roleKeys.indexOf(key)]) { toggleRole(state.session.taxonomy[state.activeCategory][roleKeys.indexOf(key)]); }
@@ -1005,12 +1039,13 @@ async function start() {
     if (state.session.publicationSupported) { state.filter = "pending"; }
     else if (state.session.items.some(item => item.instrument?.needsAttention)) { state.filter = "instrument"; }
     try {
-      let saved = JSON.parse(localStorage.getItem("egc1-review:" + state.session.fingerprint) || localStorage.getItem("toy-audition:" + state.session.fingerprint) || "null");
+      let saved = JSON.parse(localStorage.getItem(reviewStorageKey()) || localStorage.getItem("egc1-review:" + state.session.fingerprint) || localStorage.getItem("toy-audition:" + state.session.fingerprint) || "null");
+      if(saved?.folderKey && saved.folderKey!==state.session.folderKey) { saved=null; }
       if (!saved) {
         const ids = new Set(state.session.items.map((item) => item.id));
         const previous = Object.keys(localStorage).filter((key) => (key.startsWith("egc1-review:") || key.startsWith("toy-audition:"))).map((key) => {
           try { return JSON.parse(localStorage.getItem(key)); } catch (_) { return null; }
-        }).filter((value) => value && (ids.has(value.current) || value.drafts?.some(([id]) => ids.has(id))));
+        }).filter((value) => value && (!state.session.folderKey || value.folderKey===state.session.folderKey) && (ids.has(value.current) || value.drafts?.some(([id]) => ids.has(id))));
         previous.sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0));
         saved = previous[0];
       }
@@ -1032,7 +1067,9 @@ async function start() {
       }
     } catch (_) { /* Browser storage is optional. */ }
     if (["instrument", "pending"].includes(state.filter) && !queueItems().length) {
+      const previousMode=state.mode;
       state.mode = state.mode === "sample" ? "hit" : "sample";
+      if(!queueItems().length){state.mode=previousMode;}
     }
     renderQueue();
     const draftItem = allItems().find((candidate) => candidate.id === state.resume && state.drafts.has(candidate.id));

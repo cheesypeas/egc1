@@ -229,3 +229,35 @@ unchanged historical reviews, mobile queue access and no horizontal overflow.
 The full correction/admission test still passes publication, reflagging, bank
 updates, valid exported audio and native reader compatibility. Shared review
 assets match and Python review/API regression checks pass.
+
+
+## Library building, collection totals and playable preview — 2026-11-12
+
+The main review action now records feedback and approves/rejects the sound, updates
+counts and advances. Optional notes no longer require a separate judgement save.
+Waveform marks update the approval fields immediately; approval uses those exact
+source frames. Default playback starts at proposed playable bounds rather than
+padded analysis context. Root/category/start edits are emphasised for synths;
+loop approval requires a beat count and retains exact marked endpoints.
+
+The later saved Future Music CD1 reviews are retained as reference evidence in
+`tests/curation-review-cases.json`. Five Track 01 start proposals differ from the
+human marks by 2–12 samples (under 0.3 ms), while the old default review audio
+included about 20–24 ms of context. The Track 12 loop has matching starts but a
+substantially different end; the merged Track 01 region remains a manual phrase
+selection. This change corrects audition/approval consistency; it does not claim
+that arbitrary loop boundaries or merged phrases are now automatically correct.
+
+Chrome checks cover single-action approval/rejection, exact marked exported WAV
+bounds, a zero-relative first drum chop, mandatory loop beat count, a closed
+four-beat grid, unchanged original audio, native-reader compatibility and bank
+updates. Category inventory checks cover duplicate audio across siblings, zero
+categories, pending-versus-ready states, legacy kit hashes and unreadable metadata.
+Parent/sibling browsing passes with both file-input/ZIP mode and real writable
+OPFS directory handles. The parent receives a collection index, never a generated
+playable catalogue. Changing packs preserves independent outputs, queue settings
+and drafts. Desktop/mobile layouts and shared/native review regressions pass.
+
+Collection counts read saved catalogues and audio presence without rerunning
+models or rehashing whole packs. They are a catalogue inventory, not a new audio
+quality benchmark. Pack metadata/review histories remain independent.

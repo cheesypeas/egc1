@@ -1,0 +1,159 @@
+{
+  "version": 1,
+  "source": "Saved Future Music CD1 reviews, 12 November 2026",
+  "status": "Reference marks; start agreement does not certify loop endpoints or phrase grouping",
+  "pipeline": "browser-library-1:core-802b986:left-zero-crossings:frontend-r8brain-v1:validated-preparation-v1:beat-this-c5c1466e08abdb03",
+  "cases": [
+    {
+      "sourcePath": "FM1 - Track 12.wav",
+      "sourceId": "ca1026e66c86bf2f7af6c5d1f7ce12d83a12cf22715ffda77654e72fb70d872e",
+      "analysisId": "bb2f2beba97798ee4c5138314a26ad57663193a11d820945df92bea6bf09017e",
+      "rate": 44100,
+      "region": {
+        "start": 1926758,
+        "end": 2117285
+      },
+      "proposedPlaybackBounds": {
+        "start": 1927785,
+        "end": 2114793
+      },
+      "humanPlaybackBounds": {
+        "start": 1927785,
+        "end": 2104859
+      },
+      "humanTags": [
+        "drum-loop",
+        "loops"
+      ],
+      "issues": [
+        "loop-timing"
+      ]
+    },
+    {
+      "sourcePath": "FM1 - Track 01.wav",
+      "sourceId": "e1b30be9c0b11e48ef233e5810c66899451b20af65ea079ed1c6f25c43b1ba6b",
+      "analysisId": "620e76fb311c89e8edf7f6dac47b484af064ef1de9b609e667fa187635171c17",
+      "rate": 44100,
+      "region": {
+        "start": 256518,
+        "end": 347165
+      },
+      "proposedPlaybackBounds": {
+        "start": 257577,
+        "end": 339150
+      },
+      "humanPlaybackBounds": {
+        "start": 257589,
+        "end": 278085
+      },
+      "humanTags": [
+        "fx",
+        "synth"
+      ],
+      "issues": [
+        "leading-silence",
+        "merged"
+      ]
+    },
+    {
+      "sourcePath": "FM1 - Track 01.wav",
+      "sourceId": "e1b30be9c0b11e48ef233e5810c66899451b20af65ea079ed1c6f25c43b1ba6b",
+      "analysisId": "c6aa027d5c9879446626f17d63e133bae2e6a4bc964901941180021f1d401f76",
+      "rate": 44100,
+      "region": {
+        "start": 485538,
+        "end": 707085
+      },
+      "proposedPlaybackBounds": {
+        "start": 486603,
+        "end": 703150
+      },
+      "humanPlaybackBounds": {
+        "start": 486601,
+        "end": 705648
+      },
+      "humanTags": [
+        "lead",
+        "synth"
+      ],
+      "issues": [
+        "leading-silence"
+      ]
+    },
+    {
+      "sourcePath": "FM1 - Track 01.wav",
+      "sourceId": "e1b30be9c0b11e48ef233e5810c66899451b20af65ea079ed1c6f25c43b1ba6b",
+      "analysisId": "592df30a285c8a42d3afbf020b2e2cddc482383e8f756ccc68a93513c8277459",
+      "rate": 44100,
+      "region": {
+        "start": 853378,
+        "end": 1039725
+      },
+      "proposedPlaybackBounds": {
+        "start": 854438,
+        "end": 1030672
+      },
+      "humanPlaybackBounds": {
+        "start": 854429,
+        "end": 1031393
+      },
+      "humanTags": [
+        "lead",
+        "synth"
+      ],
+      "issues": [
+        "leading-silence"
+      ]
+    },
+    {
+      "sourcePath": "FM1 - Track 01.wav",
+      "sourceId": "e1b30be9c0b11e48ef233e5810c66899451b20af65ea079ed1c6f25c43b1ba6b",
+      "analysisId": "32e8465d2098e84b27b9f7949e105ea46545b11a5530ab293841df5381c0bee1",
+      "rate": 44100,
+      "region": {
+        "start": 1082178,
+        "end": 1245205
+      },
+      "proposedPlaybackBounds": {
+        "start": 1083145,
+        "end": 1237322
+      },
+      "humanPlaybackBounds": {
+        "start": 1083151,
+        "end": 1234973
+      },
+      "humanTags": [
+        "vocal",
+        "vocal-note"
+      ],
+      "issues": [
+        "leading-silence"
+      ]
+    },
+    {
+      "sourcePath": "FM1 - Track 01.wav",
+      "sourceId": "e1b30be9c0b11e48ef233e5810c66899451b20af65ea079ed1c6f25c43b1ba6b",
+      "analysisId": "91d8ad297c2920c05c01a6be4198a91169b47a88cac33b01b354395d3a9d3212",
+      "rate": 44100,
+      "region": {
+        "start": 1282818,
+        "end": 1477965
+      },
+      "proposedPlaybackBounds": {
+        "start": 1283763,
+        "end": 1467744
+      },
+      "humanPlaybackBounds": {
+        "start": 1283758,
+        "end": 1472309
+      },
+      "humanTags": [
+        "vocal",
+        "vocal-note"
+      ],
+      "issues": [
+        "leading-silence"
+      ]
+    }
+  ]
+}

@@ -76,6 +76,7 @@ try:
                 page.locator('#category-filter').select_option('synth')
                 assert page.locator('#queue .queue-item').count() == 1
                 assert page.locator('#item-title').inner_text() == 'Bass.wav'
+                page.locator('.feedback-details summary').click()
                 page.locator('#notes').fill('Quiet root needs checking')
                 page.locator('#clear-queue-filters').click()
                 page.locator('#folder-filter').select_option('Drums')
@@ -89,9 +90,9 @@ try:
                 page.locator('#queue-sort').select_option('duration')
                 assert page.locator('#queue .queue-item strong').all_inner_texts() == ['Kick 10.wav','Kick 2.wav']
                 page.locator('#autoplay').uncheck()
-                page.locator('#save').click()
+                page.locator('#curate-add').click()
                 page.wait_for_function("document.querySelector('#item-title').textContent === 'Kick 2.wav'")
-                page.locator('#reason-filter').select_option('uncertain-category')
+                page.locator('#reason-filter').select_option('uncertain-attacks')
                 assert page.locator('#queue .queue-item').count() == 1
                 page.locator('#queue-search').fill('no-match-for-this-name')
                 assert page.locator('#queue .queue-item').count() == 0
@@ -106,11 +107,18 @@ try:
                 assert page.locator('#queue .queue-item').count() == 1
                 assert page.locator('#item-title').inner_text() == 'Rejected.wav'
                 page.locator('#filter').select_option('accepted')
-                assert page.locator('#queue .queue-item').count() == 1
-                assert page.locator('#item-title').inner_text() == 'Accepted.wav'
+                assert page.locator('#queue .queue-item').count() == 2
+                assert page.locator('#item-title').inner_text() == 'Kick 10.wav'
                 page.locator('#filter').select_option('all')
                 page.locator('#category-filter').select_option('drums')
                 page.locator('#queue-sort').select_option('source')
+                # Download mode persists approved audio by extracting its metadata ZIP.
+                import zipfile
+                with page.expect_download() as metadata_download:
+                    page.locator('#review-download').click()
+                archive=Path(temporary)/'metadata.zip';metadata_download.value.save_as(archive)
+                with zipfile.ZipFile(archive) as saved:
+                    saved.extractall(folder)
                 page.reload()
                 page.locator('#review-folder-input').set_input_files(str(folder))
                 page.wait_for_selector('#workspace:not([hidden])')
@@ -118,14 +126,72 @@ try:
                 assert page.locator('#category-filter').input_value() == 'drums'
                 assert page.locator('#queue-sort').input_value() == 'source'
                 assert page.locator('#queue .queue-item strong').all_inner_texts() == ['Kick 2.wav','Kick 10.wav','Rejected.wav']
+                # Link the source parent; one sibling contains a duplicate and a new bass.
+                import shutil
+                sibling=Path(temporary)/'Other pack'
+                (sibling/'.egc1/entries').mkdir(parents=True)
+                shared=dict(rows[-1]);shared['path']='shared.wav'
+                bass=dict(rows[2]);bass.update(path='bass.wav',state='ready')
+                for row,original in [(shared,folder/rows[-1]['path']),(bass,folder/rows[2]['path'])]:
+                    shutil.copyfile(original,sibling/row['path'])
+                    shutil.copyfile(metadata/'entries'/f"{row['id']}.json",sibling/'.egc1/entries'/f"{row['id']}.json")
+                (sibling/'.egc1/library.json').write_text(json.dumps(dict(version=1,state='complete',entries=[shared,bass])))
+                raw=Path(temporary)/'Unprepared';raw.mkdir();shutil.copyfile(folder/rows[0]['path'],raw/'original.wav')
+                page.locator('#collection-folder-input').set_input_files(temporary)
+                page.wait_for_function("document.querySelector('#inventory-total').textContent.startsWith('3 unique sounds ready')")
+                assert page.locator('#collection-context').inner_text()=='Current folder: samples'
+                assert '1 ready' in page.locator('[data-inventory-category="bass"]').inner_text()
+                assert '0 ready' in page.locator('[data-inventory-category="pad"]').inner_text()
+                page.locator('#collection-folders summary').click()
+                assert page.locator('#collection-folders-body tr').count()==3
+                page.locator('#collection-folders-body tr').filter(has_text='Other pack').get_by_role('button',name='Open',exact=True).click()
+                page.wait_for_function("document.querySelector('#current-pack-name').textContent==='Other pack'")
+                assert '2 ready' in page.locator('#current-pack-counts').inner_text()
+                assert page.locator('#collection-context').inner_text()=='Current folder: Other pack'
+                page.locator('#collection-folders-body tr').filter(has_text='samples').get_by_role('button',name='Open',exact=True).click()
+                page.wait_for_function("document.querySelector('#current-pack-name').textContent==='samples'")
+                assert '2 ready' in page.locator('#current-pack-counts').inner_text()
+                assert page.locator('#filter').input_value()=='all'
+                with page.expect_download() as download:
+                    page.locator('#collection-download').click()
+                index=Path(temporary)/'collection-index.json';download.value.save_as(index)
+                saved=json.loads(index.read_text())
+                assert saved['type']=='sample-collection' and len(saved['catalogues'])==2
+                page.locator('#collection-refresh').click()
+                page.wait_for_function("document.querySelector('#inventory-total').textContent.startsWith('3 unique sounds ready')")
+                # Exercise direct writable directory handles, independently of ZIP mode.
+                page.evaluate("""async () => {
+                    const root=await (await navigator.storage.getDirectory()).getDirectoryHandle('collection-qa',{create:true});
+                    for(const file of document.querySelector('#collection-folder-input').files) {
+                        const parts=file.webkitRelativePath.split('/').slice(1);let directory=root;
+                        for(const name of parts.slice(0,-1)){directory=await directory.getDirectoryHandle(name,{create:true});}
+                        const target=await directory.getFileHandle(parts.at(-1),{create:true}),stream=await target.createWritable();await stream.write(file);await stream.close();
+                    }
+                    window.collectionTestRoot=root;
+                    window.showDirectoryPicker=async options => options.id==='egc-collection-parent' ? root : root.getDirectoryHandle('samples');
+                }""")
+                page.locator('#review-choose').click()
+                page.wait_for_function("document.querySelector('#review-save-mode').textContent.includes('Reviews save to')")
+                page.locator('#collection-choose').click()
+                page.wait_for_function("document.querySelector('#collection-name').textContent==='collection-qa'")
+                assert page.locator('#collection-context').inner_text()=='Current folder: samples'
+                assert page.locator('#inventory-total').inner_text().startswith('3 unique sounds ready')
+                saved=page.evaluate("""async () => {
+                    const metadata=await window.collectionTestRoot.getDirectoryHandle('.egc1');
+                    const snapshot=JSON.parse(await (await (await metadata.getFileHandle('collection.json')).getFile()).text());
+                    try {await metadata.getFileHandle('library.json');throw Error('Parent catalogue was created');}
+                    catch(error){if(error.name!=='NotFoundError'){throw error;}}
+                    return snapshot;
+                }""")
+                assert saved['type']=='sample-collection' and len(saved['catalogues'])==2
                 page.screenshot(path='/tmp/egc-curation-desktop.png', full_page=True)
                 page.set_viewport_size(dict(width=390,height=844))
-                assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
+                assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'), page.evaluate("({html:document.documentElement.scrollWidth,body:document.body.scrollWidth,viewport:innerWidth,elements:[...document.querySelectorAll('body *')].map(e=>({tag:e.tagName,id:e.id,cls:e.className,text:e.textContent.slice(0,60),right:e.getBoundingClientRect().right,width:e.getBoundingClientRect().width,scroll:e.scrollWidth,client:e.clientWidth,overflow:getComputedStyle(e).overflowX})).filter(e=>e.right>innerWidth || e.scroll>e.client+1)})")
                 assert page.locator('#queue-search').is_visible()
                 assert page.locator('#queue').is_visible()
                 page.screenshot(path='/tmp/egc-curation-mobile.png', full_page=True)
                 assert not errors, errors
-                print('PASS: visible names/categories, manual queue, search/folder/category/reason filters, sorted navigation, empty state, draft and preference persistence, historical reviews unchanged, mobile layout',flush=True)
+                print('PASS: single-action approval, visible playable cuts, category totals, parent/sibling deduplication, ZIP and direct-folder collection indexes, folder switching/drafts, filters, historic reviews and mobile layout',flush=True)
             finally:
                 browser.close()
 finally:

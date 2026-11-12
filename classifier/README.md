@@ -162,12 +162,39 @@ go to **manual review** instead of becoming playable sounds or kit hits.
 
 Both automatic checks and human issue reports can flag an exception. Flagged
 sounds are excluded from `library.json`, generated kits and accepted bank counts.
-In **review prepared samples**, use the **manual review** filter, choose clear
-categories, mark corrected source bounds and save the judgement. The admission
-panel lets you correct source-second chop positions, MIDI root and loop beat
-count. Then explicitly approve the corrected sound, or exclude it. Saving a
-judgement alone does not publish it. Resolve any instrument attention flag
-separately before approval. **Audition published sound** plays the actual output.
+In **review prepared samples**, the main flow is **listen and mark corrections
+if needed → correct the category → Approve & next or Reject & next**. Approval
+saves the judgement and publishes the marked sound in one action; rejection saves
+the judgement and keeps the sound out. **Later** keeps an unfinished draft without
+publishing it. The separate research save/approve sequence is hidden. Notes and
+issue details are optional. Resolve instrument attention flags before approving.
+The default audition plays the proposed playable bounds, with saved human marks
+taking precedence. **Analysis region** and **Original** remain available for
+context; **Load published sound** plays the actual exported audio. Synth reviews
+emphasise starts/category/root, with tail trimming optional. Loops show the end
+and require an explicit beat count; loop playback and join audition stay available.
+
+The library dashboard shows ready and pending counts in every category, including
+zeroes, with the lowest counts first. Ready means published audio, not a saved
+judgement. Standalone sounds and kit hits are counted; identical audio across
+folders counts once, while a sound may belong to several categories.
+
+Use **Choose parent folder** to link the shared source parent. Current-folder
+counts remain separate from combined totals. The parent/sibling list shows each
+prepared catalogue, plus audio folders that still need processing. Choosing a
+category focuses the review queue and the sibling counts, and carries that focus
+when opening another pack. Each pack retains its own `.egc1` audio, metadata,
+feedback and decisions; the parent stores only `.egc1/collection.json`, an index
+of its saved catalogues. Scanning a parent never processes or migrates siblings.
+Refresh collection totals after changes made elsewhere. Unreadable catalogues
+are identified and excluded from totals. Browser grants are remembered when
+available; the parent must be selected explicitly because a browser cannot walk
+up from a previously granted child folder.
+
+In download mode, folder changes retain generated files in the current session;
+download/extract each pack's metadata ZIP to persist approved audio before closing
+or reloading. The collection index can be downloaded separately. Folder-specific
+queue settings and correction drafts do not overwrite a sibling's working view.
 
 Approval publishes a mono WAV of the marked phrase with rebased analysis. A
 corrected extracted kit hit is admitted as a standalone sound; it does not

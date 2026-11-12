@@ -1,9 +1,12 @@
 import {Folder, metadataZip} from '../storage.js';
-import {ReviewLibrary} from './library.js';
-import {renderAdmission} from './admission.js';
+import {ReviewLibrary,CATEGORIES} from './library.js';
+import {readCatalogue} from './inventory.js';
+import {Collection} from './collection.js';
+import {renderDashboard} from './dashboard.js';
+import {renderAdmission,curateCurrent} from './admission.js';
 
 const $ = id => document.getElementById(id);
-let library = null, folder = null, name = '', writable = false, opening = false, sourceSession = null;
+let library = null, folder = null, name = '', writable = false, opening = false, sourceSession = null, collectionPath = null, viewState = null, viewActions = null;
 const cache = {
     async database() {
         if (!this.promise) {
@@ -23,9 +26,18 @@ const cache = {
     async set(key,value) { this.memory.set(key,structuredClone(value)); try { await this.storedSet(key,value); } catch (_) { message('Browser storage is unavailable. Save metadata before closing.'); } },
 };
 window.egcReview = {
-    renderAdmission,
+    renderAdmission,curateCurrent,
+    renderLibrary: (state,actions) => {
+        viewState=state;viewActions=actions;
+        renderDashboard(state,dashboardActions(),collection,name);
+    },
     request: async (...args) => {
         const before = new Map(folder.outputs), result = await library.request(...args);
+        if (args[0].startsWith('/api/session')) { result.inventory=await readCatalogue(folder);result.folderKey=collection.currentPath!==null ? collection.root.name+'/'+collection.currentPath : '/'+name; }
+        if (args[1] !== undefined && collection.root) {
+            try { await collection.updateCurrent(current()); }
+            catch(error) { message('Sound decision saved; collection totals could not be saved: '+error.message); }
+        }
         if (args[1] !== undefined && window.opener && sourceSession) {
             window.opener.postMessage({type:'egc1-publication-changed',session:sourceSession,
                 outputs:[...folder.outputs].filter(([path,blob]) => before.get(path) !== blob)},location.origin);
@@ -35,13 +47,58 @@ window.egcReview = {
     audio: path => library.audio(path),
 };
 const message = text => { $('review-save-mode').textContent = text; };
+const current = () => folder ? {folder,handle:folder.handle,files:[...folder.files].map(([path,file])=>({path,file})),outputs:[...folder.outputs],name,session:sourceSession,collectionPath} : null;
+const collection = new Collection(cache,CATEGORIES,()=>{
+    if(viewState){
+        if(!opening && collection.currentPath!==null) {
+            const key=collection.root.name+'/'+collection.currentPath;
+            if(viewState.session.folderKey!==key){window.rememberDraft();viewState.session.folderKey=key;window.rememberDraft();}
+        }
+        renderDashboard(viewState,dashboardActions(),collection,name);
+    }
+},message);
+function dashboardActions() {
+    return {...viewActions,openPack,focusCategory:tag=>{collection.goal=tag;viewActions.focusCategory(tag);}};
+}
+async function openPack(path) {
+    try {
+        if(viewState?.saving) { throw Error('Wait for the current sound decision to finish'); }
+        window.rememberDraft();
+        if(folder && collection.currentPath!==null) { collection.packs.set(collection.currentPath,current()); }
+        const pack=await collection.open(path);
+        if(pack.handle && await pack.handle.queryPermission({mode:'readwrite'})!=='granted' && await pack.handle.requestPermission({mode:'readwrite'})!=='granted') { throw Error('Folder access was not granted'); }
+        await open(pack);
+        if(collection.goal) { viewActions.focusCategory(collection.goal); }
+    } catch(error) { message(error.message); }
+}
+$('collection-choose').addEventListener('click',async()=>{
+    try {
+        if(window.showDirectoryPicker && window.isSecureContext) {
+            const handle=await window.showDirectoryPicker({id:'egc-collection-parent',mode:'readwrite'});
+            await collection.attach({handle,name:handle.name},current());saveMode();
+        } else { $('collection-folder-input').click(); }
+    } catch(error) { if(error.name!=='AbortError'){message(error.message);} }
+});
+$('collection-folder-input').addEventListener('change',async event=>{
+    const chosen=[...event.target.files];if(!chosen.length){return;}
+    try {
+        const rootName=chosen[0].webkitRelativePath.split('/')[0];
+        const files=chosen.map(file=>({path:file.webkitRelativePath.split('/').slice(1).join('/'),file}));
+        await collection.attach({name:rootName,files},current());saveMode();
+    } catch(error) { message(error.message); }
+});
+$('collection-refresh').addEventListener('click',async()=>{try{await collection.refresh(current());saveMode();}catch(error){message(error.message);}});
+$('collection-download').addEventListener('click',()=>{
+    const url=URL.createObjectURL(new Blob([JSON.stringify(collection.snapshot(),null,2)],{type:'application/json'}));
+    const link=document.createElement('a');link.href=url;link.download='egc1-collection.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+});
 function saveMode() {
     message(writable ? `${name} · Reviews save to .egc1 in this folder.` : `${name} · Reviews are saved in this browser. Download metadata to carry them with your samples; browser storage can be cleared.`);
     $('review-download').hidden = writable; $('review-import-button').hidden = false;
 }
 const script = document.createElement('script'); script.src = './app.js';
 await new Promise((resolve,reject) => { script.onload = resolve; script.onerror = reject; document.head.append(script); });
-async function open({handle = null, files: inputs = [], outputs = [], name: label = 'samples', session = null}) {
+async function open({handle = null, files: inputs = [], outputs = [], name: label = 'samples', session = null, collectionPath: selectedPath = null}) {
     if (opening) { return; }
     opening = true; $('review-choose').disabled = true;
     try {
@@ -50,13 +107,16 @@ async function open({handle = null, files: inputs = [], outputs = [], name: labe
         const candidateFolder = new Folder(handle,inputs, event => { if (event.message || event.stage) { message(event.message || event.stage); } });
         candidateFolder.outputs = new Map(outputs);
         const candidate = await new ReviewLibrary(candidateFolder,cache,message).initialise();
-        folder = candidateFolder; library = candidate; name = label; writable = Boolean(handle); sourceSession = session;
+        window.resetReviewFolder();
+        folder = candidateFolder; library = candidate; name = label; writable = Boolean(handle); sourceSession = session; collectionPath=selectedPath;
+        if(collection.root) { collection.currentPath=await collection.locate(current()); }
         if (handle) { await cache.set('last-folder',{handle,name}); }
         $('refresh').disabled = false; $('export').disabled = false;
         document.body.classList.add('library-open');
         $('review-app').hidden = false; $('review-folder').querySelector('h1').textContent = 'Sample review';
         $('review-choose').textContent = 'change folder'; saveMode();
         await window.start();
+        if(collection.root) { await collection.updateCurrent(current()); }
     } catch (error) { message(error.message); }
     finally { opening = false; $('review-choose').disabled = false; }
 }
@@ -100,3 +160,8 @@ else {
         if (saved?.handle && await saved.handle.queryPermission({mode:'readwrite'}) === 'granted') { await open(saved); }
     } catch (error) { message('Choose your prepared folder. Browser storage is unavailable; download metadata before closing.'); }
 }
+
+try {
+    const parent=await cache.get('collection-parent');
+    if(parent?.handle && await parent.handle.queryPermission({mode:'readwrite'})==='granted') { await collection.attach(parent,current()); }
+} catch(error) { message('Choose the collection parent again to refresh sibling totals.'); }

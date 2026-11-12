@@ -26,11 +26,17 @@
     <section class="review-folder" id="review-folder" aria-labelledby="review-title">
       <p class="eyebrow"><span class="eyebrow-line"></span> EGC1</p>
       <h1 id="review-title">Sample review</h1>
-      <p class="intro-copy">Choose a prepared sample folder or USB stick.<br class="desktop-break"> Excluded candidates open in the manual review queue. Audio stays on your computer.</p>
+      <p class="intro-copy">Choose a prepared sample folder or USB stick.<br class="desktop-break"> Build your library from the manual review queue, with collection totals to guide you. Audio stays on your computer.</p>
       <div class="actions"><button class="button primary" id="review-choose">choose folder ↗</button><input id="review-folder-input" type="file" webkitdirectory multiple hidden><button class="button quiet" id="review-download" hidden>download metadata ↓</button><input id="review-import" type="file" accept="application/json,.json" hidden><button class="button quiet" id="review-import-button" type="button" hidden>import reviews</button></div>
       <p id="review-save-mode" role="status">Review accepted samples and excluded candidates. Audio stays on your computer.</p>
     </section>
   </div>
+  <section class="library-dashboard shell" id="library-dashboard" hidden aria-label="Library building progress">
+    <div class="library-context"><div><p class="eyebrow">CURRENT FOLDER</p><h2 id="current-pack-name"></h2><p id="current-pack-counts"></p></div><div><p class="eyebrow">SHARED PARENT COLLECTION</p><h2 id="collection-name">Parent collection not linked</h2><p id="collection-context"></p><button id="collection-choose" class="secondary">Choose parent folder</button><input id="collection-folder-input" type="file" webkitdirectory multiple hidden></div></div>
+    <details class="collection-progress" id="inventory-panel" open><summary><strong id="inventory-title">Ready in this folder</strong><span id="inventory-total"></span></summary><p>Start with the lowest counts. Choose a category to focus your review.</p><div id="inventory-groups" class="inventory-groups"></div><p id="inventory-note" class="muted"></p></details>
+    <details id="collection-folders" hidden><summary>Parent and sibling folders</summary><div class="actions"><button id="collection-refresh" class="quiet">Refresh collection totals</button><button id="collection-download" class="quiet">Download collection index</button></div><p id="collection-focus"></p><button id="collection-clear-focus" class="quiet" hidden>Show all categories</button><p id="collection-errors" role="status"></p><table><thead><tr><th>Prepared folder</th><th>Ready</th><th>To review</th><th></th></tr></thead><tbody id="collection-folders-body"></tbody></table></details>
+    <p class="workflow-guide"><strong>1. Listen and mark corrections if needed</strong> → <strong>2. Correct the category</strong> → <strong>3. Approve or reject and move on</strong>. Your feedback is saved automatically with the decision.</p>
+  </section>
   <div class="app-shell" id="review-app" hidden>
     <aside class="sidebar">
       <p class="eyebrow">YOUR LISTENING QUEUE</p>
@@ -71,7 +77,7 @@
           <div class="transport"><div><button id="play" class="play-button">▶ Play <kbd>Space</kbd></button><button id="previous" class="secondary" aria-label="Previous item">←</button><button id="next" class="secondary" aria-label="Next item">→</button><label class="check"><input type="checkbox" id="loop"> Loop</label></div><div><label for="volume" class="muted">Level</label><input id="volume" type="range" min="0" max="100" value="70" aria-label="Playback level"></div></div>
           <div class="marked-playback"><span id="marked-range">Mark an attack or end to audition your cut.</span><button id="loop-join" class="quiet" title="Play just before your end mark, then loop back to your attack mark." disabled>▶ Loop join <kbd>J</kbd></button></div>
         </section>
-        <section class="boundaries panel" aria-label="Attack and end inspection">
+        <details class="boundaries panel" id="precise-cuts"><summary>Correct the start and end if needed</summary>
           <div class="section-heading"><div><h2>At the edges</h2><p>Click to mark · drag to pan · scroll to zoom</p></div><label class="zoom-label">Window <select id="zoom" aria-label="Attack and end waveform window"></select></label></div>
           <div class="edge-grid">
             <div>
@@ -90,20 +96,22 @@
             </div>
           </div>
           <div class="wave-key"><span class="detector-key">Proposed cut / detected attack</span><span class="reference-key">Your reference</span><span class="zero-key">Horizontal line: zero amplitude</span><span>Faint markers: other detected transients</span></div>
-        </section>
+        </details>
         <section class="judgement panel" aria-label="Your listening judgement">
-          <div class="section-heading"><div><h2>What do you hear?</h2><p>Choose more than one category or role when it fits.</p></div><label class="confidence-label">Certainty <select id="certainty"><option value="clear">Clear</option><option value="tentative">Tentative</option><option value="unsure">Unsure</option></select></label></div>
+          <div class="section-heading"><div><h2>Category</h2><p>Keep the suggestion or correct it. Then approve or reject below.</p></div><label class="confidence-label">Certainty <select id="certainty"><option value="clear">Clear</option><option value="tentative">Tentative</option><option value="unsure">Unsure</option></select></label></div>
           <div id="categories" class="category-buttons"></div>
           <div class="roles-heading"><span id="roles-title">Choose a category to add a role</span><span class="muted">Q–U</span></div><div id="roles" class="role-buttons"></div>
-          <div id="hit-quality" hidden><div class="quality-heading" id="quality-title">Is this a useful extracted hit?</div><p id="quality-help"></p><div class="quality-buttons" aria-describedby="quality-help"><button data-quality="keep">Useful hit <kbd>G</kbd></button><button data-quality="reject">Bad extraction <kbd>X</kbd></button><button data-quality="unsure">Unsure</button></div><p class="issues-heading">What needs attention? <span class="muted">Choose any that apply.</span></p><div class="issue-buttons" id="issues"><label><input type="checkbox" value="wrong-category"> Wrong category</label><label><input type="checkbox" value="wrong-role"> Wrong subcategory / role</label><label><input type="checkbox" value="wrong-root"> Wrong root note / tuning</label><label><input type="checkbox" value="attack"> Attack clipped / starts late</label><label><input type="checkbox" value="leading-silence"> Silence before the sound</label><label><input type="checkbox" value="tail"> Tail cut short</label><label><input type="checkbox" value="trailing-silence"> Silence after the sound</label><label><input type="checkbox" value="loop-gap"> Gap at the loop join</label><label><input type="checkbox" value="loop-click"> Click at the loop join</label><label><input type="checkbox" value="loop-timing"> Wrong loop length / beat timing</label><label><input type="checkbox" value="too-short"> Too short to use / identify</label><label><input type="checkbox" value="silence"> Silent / almost silent</label><label><input type="checkbox" value="distorted"> Clipping / distortion</label><label><input type="checkbox" value="bleed"> Bleed / overlap</label><label><input type="checkbox" value="duplicate"> Duplicate</label><label id="not-drum-issue"><input type="checkbox" value="not-drum"> Not a drum</label><label data-region-issue><input type="checkbox" value="split"> One sound / phrase split apart</label><label data-region-issue><input type="checkbox" value="merged"> Independent sounds left together</label></div></div>
+          <details class="feedback-details"><summary>Optional notes and problem details</summary><div id="hit-quality" hidden><div class="quality-heading" id="quality-title">Is this a useful extracted hit?</div><p id="quality-help"></p><div class="quality-buttons" aria-describedby="quality-help"><button data-quality="keep">Useful hit <kbd>G</kbd></button><button data-quality="reject">Bad extraction <kbd>X</kbd></button><button data-quality="unsure">Unsure</button></div><p class="issues-heading">What needs attention? <span class="muted">Choose any that apply.</span></p><div class="issue-buttons" id="issues"><label><input type="checkbox" value="wrong-category"> Wrong category</label><label><input type="checkbox" value="wrong-role"> Wrong subcategory / role</label><label><input type="checkbox" value="wrong-root"> Wrong root note / tuning</label><label><input type="checkbox" value="attack"> Attack clipped / starts late</label><label><input type="checkbox" value="leading-silence"> Silence before the sound</label><label><input type="checkbox" value="tail"> Tail cut short</label><label><input type="checkbox" value="trailing-silence"> Silence after the sound</label><label><input type="checkbox" value="loop-gap"> Gap at the loop join</label><label><input type="checkbox" value="loop-click"> Click at the loop join</label><label><input type="checkbox" value="loop-timing"> Wrong loop length / beat timing</label><label><input type="checkbox" value="too-short"> Too short to use / identify</label><label><input type="checkbox" value="silence"> Silent / almost silent</label><label><input type="checkbox" value="distorted"> Clipping / distortion</label><label><input type="checkbox" value="bleed"> Bleed / overlap</label><label><input type="checkbox" value="duplicate"> Duplicate</label><label id="not-drum-issue"><input type="checkbox" value="not-drum"> Not a drum</label><label data-region-issue><input type="checkbox" value="split"> One sound / phrase split apart</label><label data-region-issue><input type="checkbox" value="merged"> Independent sounds left together</label></div></div>
           <textarea id="notes" rows="2" maxlength="2000" placeholder="Optional listening notes…" aria-label="Listening notes"></textarea>
-          <div class="save-row"><div><button id="save" class="primary">Save & next <kbd>Enter</kbd></button><button id="unsure" class="secondary">Unsure & next <kbd>S</kbd></button><button id="undo" class="quiet" disabled>Undo <kbd>Z</kbd></button></div><label class="check"><input id="autoplay" type="checkbox" checked> Play next on save</label></div>
-          <p id="status" role="status" aria-live="polite">Your judgements save to this library, separately from sample tags.</p>
+          </details>
+          <div class="save-row legacy-review-actions"><div><button id="save" class="primary">Save & next <kbd>Enter</kbd></button><button id="unsure" class="secondary">Unsure & next <kbd>S</kbd></button><button id="undo" class="quiet" disabled>Undo <kbd>Z</kbd></button></div><label class="check"><input id="autoplay" type="checkbox" checked> Play next on save</label></div>
+          <p id="status" role="status" aria-live="polite">Approve to add the sound; reject to exclude it. Feedback is recorded with that decision.</p>
         </section>
         <section class="panel admission" id="admission" aria-labelledby="admission-title" hidden>
-          <h2 id="admission-title">Manual correction and library approval</h2>
+          <h2 id="admission-title">Keep this sound?</h2>
           <p id="admission-state"></p><p id="admission-reasons"></p>
           <button id="admission-audition" class="quiet" type="button">Load published sound</button><audio id="admission-player" controls hidden></audio>
+          <details id="sound-corrections"><summary>Correct bounds, chops or tuning</summary>
           <div class="admission-fields">
             <label>Playable start (source seconds)<input id="admission-start" type="number" min="0" step="0.000001"></label>
             <label>Playable end (source seconds)<input id="admission-end" type="number" min="0" step="0.000001"></label>
@@ -111,9 +119,12 @@
             <label id="admission-beats-label">Beats in marked loop<input id="admission-beats" type="number" min="2" max="128" step="1"></label>
           </div>
           <label>Chop positions (source seconds, separated by commas)<textarea id="admission-transients" rows="2" spellcheck="false"></textarea></label>
-          <div class="actions"><button id="admission-bounds" class="quiet" type="button">Apply bounds to waveform marks</button><button id="admission-save" class="secondary" type="button">Save judgement here</button><button id="admission-approve" class="primary" type="button">Approve corrected sound</button><button id="admission-reject" class="quiet" type="button">Exclude sound</button></div>
-          <p>Save your category and judgement first. Approval uses the saved marks and the corrections above. Saving a judgement or resolving a flag does not approve a sound.</p>
-          <p id="admission-status" role="status"></p>
+          </details>
+          <details class="legacy-admission-actions"><summary>Save a draft without deciding</summary><div class="actions"><button id="admission-bounds" class="quiet" type="button">Apply bounds to waveform marks</button><button id="admission-save" class="secondary" type="button">Save judgement here</button><button id="admission-approve" class="primary" type="button">Approve corrected sound</button><button id="admission-reject" class="quiet" type="button">Exclude sound</button></div>
+          </details>
+          <div class="curation-actions"><button id="curate-add" class="primary" type="button">Approve & next <kbd>Enter</kbd></button><button id="curate-later" class="secondary" type="button">Later <kbd>S</kbd></button><button id="curate-exclude" class="quiet" type="button">Reject & next</button></div>
+          <p>Approval saves your category and marked corrections, adds the sound to the library and opens the next item. Rejected sounds stay out of the library. Later keeps your work as a draft.</p>
+          <p id="decision-progress" class="muted"></p><p id="admission-status" role="status"></p>
         </section>
       </div>
       <footer><span><kbd>Space</kbd> play / pause</span><span><kbd>←</kbd> <kbd>→</kbd> browse</span><span><kbd>1</kbd>–<kbd>5</kbd> categories</span><span><kbd>Q</kbd>–<kbd>U</kbd> roles</span><span><kbd>A</kbd> source · <kbd>B</kbd> sample · <kbd>C</kbd> context · <kbd>M</kbd> marks · <kbd>J</kbd> join</span></footer>

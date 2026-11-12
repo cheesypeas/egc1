@@ -128,3 +128,58 @@
 #admission-state { color:#e8b86a; font-weight:bold; }
 #admission-status { min-height:1.5em; }
 @media (max-width:600px) { .admission-fields { grid-template-columns:1fr; } }
+.library-dashboard { padding-top:0; padding-bottom:20px; }
+.library-context { display:grid; grid-template-columns:1fr 1fr; gap:24px; border:1px solid var(--line); padding:18px; border-radius:6px; }
+.library-context h2 { font-size:20px; overflow-wrap:anywhere; margin:0; }
+.library-context p { font-size:12px; }
+.library-context .eyebrow { margin:0 0 8px; }
+.collection-progress,#collection-folders { margin-top:14px; border:1px solid var(--line); padding:16px; border-radius:6px; }
+.library-dashboard summary { cursor:pointer; font-size:15px; }
+#inventory-total { display:block; margin:8px 0; color:var(--green); font-size:20px; }
+.inventory-groups { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }
+.inventory-groups h3 { margin:6px 0; font-size:13px; }
+.inventory-categories { display:grid; gap:6px; }
+.inventory-category { display:grid; width:100%; grid-template-columns:minmax(0,1fr) auto; gap:5px; text-align:left; padding:10px; border:1px solid var(--line); border-radius:4px; }
+.inventory-category strong { font-size:13px; }
+.inventory-category span { color:var(--green); }
+.inventory-category small { grid-column:1/-1; color:var(--muted); font-size:11px; }
+.inventory-category.empty { border-color:var(--orange); }
+.inventory-category.empty span { color:var(--orange); }
+#inventory-note,.collection-progress>p { font-size:12px; line-height:1.6; }
+#collection-folders table { width:100%; font-size:12px; border-collapse:collapse; }
+#collection-folders th,#collection-folders td { padding:8px; border-bottom:1px solid var(--line); text-align:left; overflow-wrap:anywhere; }
+#collection-folders th { max-width:280px; font-weight:400; }
+.current-pack { background:#132517; }
+.workflow-guide { font-size:13px; line-height:1.9; color:var(--muted); }
+.review-page details>summary { margin-bottom:12px; }
+.review-page .legacy-review-actions { justify-content:flex-end; }
+.review-page .legacy-review-actions>div { display:none; }
+.review-page .legacy-admission-actions { display:none; }
+.review-page .confidence-label { display:none; }
+.review-page .curation-actions { display:flex; flex-wrap:wrap; gap:10px; margin:18px 0 0; }
+.review-page .curation-actions button { padding:13px 16px; font-size:14px; }
+.review-page .feedback-details { margin-top:14px; }
+.review-page .feedback-details textarea { margin-top:12px; }
+@media(max-width:720px) {
+  .library-context { grid-template-columns:1fr; }
+  .inventory-groups { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@media(max-width:450px) {
+  .inventory-groups { grid-template-columns:1fr; }
+  #collection-folders th,#collection-folders td { padding:6px 3px; }
+}
+/* Keep the collection table independent of the processor's sample-row columns. */
+#collection-folders th:nth-child(2) { width:75px; }
+#collection-folders th:nth-child(3) { width:95px; }
+#collection-folders th:last-child { width:100px; }
+#collection-folders th:last-child,#collection-folders td:last-child { display:table-cell; }
+#collection-folders td:last-child { white-space:nowrap; }
+#collection-folders td button { white-space:nowrap; padding:7px 10px; }
+#collection-folders tr { cursor:default; }
+@media(max-width:600px) {
+  #collection-folders th:nth-child(2) { width:45px; }
+  #collection-folders th:nth-child(3) { width:65px; }
+  #collection-folders th:last-child { width:80px; }
+}
+#collection-folders td button { font-size:11px; letter-spacing:normal; padding:7px 5px; }
+#collection-folders td[colspan] { white-space:normal; }
