@@ -4,6 +4,7 @@ export const FAMILIES = {
     synth: ['bass', 'lead', 'pad', 'keys', 'instrument', 'melodic-loop'],
     vocal: ['speech', 'vocal-note', 'vocal-loop'], fx: ['fx', 'ambience'],
 };
+export const HINT_METHOD = 'nearest-name-hints-v3';
 const best = (keys, scores) => keys.reduce((a, b) => scores[b] > scores[a] ? b : a);
 const descending = (a, b) => b[0] - a[0] || (a[1] < b[1] ? 1 : a[1] > b[1] ? -1 : 0);
 
@@ -53,6 +54,8 @@ export function classifyScores(scores, seconds, loop = {}, kind = 'sample', sile
 
 export function roleEvidence(tags, scores) {
     if (tags.includes('drums')) {
+        const assigned = tags.filter(tag=>[...FAMILIES.drums.slice(0,-1),'fx'].includes(tag));
+        if(assigned.length) { return {mode:assigned.length===1 ? 'single' : 'alternatives',candidates:assigned,assigned:assigned.length===1 ? assigned[0] : null}; }
         const hits = FAMILIES.drums.slice(0, -1), top = Math.max(...hits.map(k => scores[k]));
         const candidates = hits.filter(k => scores[k] >= .22 && scores[k] >= top - .02);
         return {mode: candidates.length > 1 ? 'alternatives' : candidates.length ? 'single' : 'unassigned', candidates, assigned: candidates.length === 1 ? candidates[0] : null};
@@ -62,11 +65,26 @@ export function roleEvidence(tags, scores) {
 }
 
 export function nameHints(path) {
-    const tokens = path.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+    // A pack title or broad ancestor (e.g. Bass Boutique/Sounds And Fx) must
+    // not add categories to a clearly named hit. Prefer the filename, then
+    // the nearest informative directory, rather than unioning the whole path.
+    const parts = path.replaceAll('\\','/').split('/').filter(Boolean).reverse().map(componentHints);
+    const recorded = parts.some(tags=>tags.includes('recorded'));
+    for(const tags of parts) {
+        const substantive = tags.filter(tag=>tag!=='recorded');
+        if(substantive.length) {
+            return [...substantive,...(recorded ? ['recorded'] : [])];
+        }
+    }
+    return recorded ? ['recorded'] : [];
+}
+
+function componentHints(name) {
+    const tokens = name.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean);
     const has = words => tokens.some(token => words.some(word => token === word || (token.startsWith(word) && /^\d+$/.test(token.slice(word.length)))));
     const loop = has(['loop', 'loops', 'break', 'breaks', 'breakbeat', 'breakbeats']);
     const vocal = has(['vocal', 'vocals', 'voice', 'voices', 'speech', 'spoken', 'acapella', 'acappella']);
-    const drum = has(['drum', 'drums', 'kit', 'kits', 'kick', 'bd', 'snare', 'sd', 'clap', 'hat', 'hats', 'hihat', 'hh', 'ohh', 'chh', 'cymbal', 'cymbals', 'crash', 'ride', 'tom', 'toms', 'percussion', 'perc']);
+    const drum = has(['drum', 'drums', 'kit', 'kits', 'kick', 'kicks', 'bd', 'snare', 'snares', 'sd', 'clap', 'claps', 'hat', 'hats', 'hihat', 'hh', 'ohh', 'chh', 'cymbal', 'cymbals', 'crash', 'ride', 'tom', 'toms', 'percussion', 'perc']);
     const synth = has(['synth', 'synths', 'bass', 'sub', 'subs', 'subbass', 'lead', 'leads', 'pad', 'pads', 'keys', 'piano']);
     const tags = [];
     if (loop) {
@@ -77,7 +95,7 @@ export function nameHints(path) {
     }
     if (drum && !loop) {
         tags.push('drums');
-        const aliases = {kick: ['bd'], snare: ['sd'], hat: ['hats', 'hihat', 'hh', 'ohh', 'chh'], cymbal: ['cymbals', 'crash', 'ride'], tom: ['toms'], percussion: ['perc']};
+        const aliases = {kick: ['kicks', 'bd'], snare: ['snares', 'sd'], clap: ['claps'], hat: ['hats', 'hihat', 'hh', 'ohh', 'chh'], cymbal: ['cymbals', 'crash', 'ride'], tom: ['toms'], percussion: ['perc']};
         for (const role of FAMILIES.drums.slice(0, -1)) { if (has([role, ...(aliases[role] || [])])) { tags.push(role); } }
     }
     if (synth && !loop) {

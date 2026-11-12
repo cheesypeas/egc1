@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {createHash, randomBytes} from 'node:crypto';
 import {SHA256, hashFile, audioInfo, encodeWav, readWav, strongestChannel, energyEnvelope, splitEnvelope} from '../audio.js';
 import {Folder, metadataZip, validOverrides, validBanks} from '../storage.js';
-import {nameHints, applyHints, classifyScores, FAMILIES, BANKS} from '../taxonomy.js';
+import {nameHints, applyHints, classifyScores, roleEvidence, FAMILIES, BANKS} from '../taxonomy.js';
 
 test('streaming identities match SHA-256 across blocks, padding boundaries and large files', async () => {
     for (const size of [0, 1, 55, 56, 63, 64, 65, 10000, 4 * 1024 * 1024 + 513]) {
@@ -63,6 +63,26 @@ test('hints are token based, manual-quality roles remain specific, and isolated 
     assert.deepEqual(classifyScores(scores, .5, {transients: [0, 50], rate: 48000}).tags, ['drums', 'kick']);
     assert.deepEqual(classifyScores(scores, 2, {transients: [0, 24000, 48000, 72000], rate: 48000}).tags, ['loops', 'drum-loop']);
     assert.deepEqual(classifyScores(scores, 2, {}, 'hit').tags, ['drums', 'kick']);
+});
+
+test('filename and nearest folder hints do not inherit unrelated pack categories',()=>{
+    const parent='Bass Boutique Deekline & Ed Solo Presents the Sound of Hotcakes (MULTiFORMAT)/HC1_Sounds_And_Fx/';
+    for(const [folder,name,role] of [['Kicks','Kick','kick'],['Snares','Snare','snare'],['Hats','Hat','hat']]) {
+        assert.deepEqual(nameHints(`${parent}HC1_Drum_Hits/HC1_${folder}/HC1_${name}_12.wav`),['drums',role]);
+        assert.deepEqual(nameHints(`${parent}HC1_Drum_Hits/HC1_${folder}/012.wav`),['drums',role]);
+    }
+    assert.deepEqual(nameHints('Bass/Fx/Drum Loops/break01.wav'),['loops','drum-loop']);
+    assert.deepEqual(nameHints('Bass/Fx/Drum Loops/001.wav'),['loops','drum-loop']);
+    assert.deepEqual(nameHints('Recorded/Bass/Fx/Kicks/kick01.wav'),['drums','kick','recorded']);
+    assert.deepEqual(nameHints('Bass\\Fx\\Snares\\001.wav'),['drums','snare']);
+    assert.deepEqual(nameHints('Samples/123.wav'),[]);
+});
+
+test('a specific assigned drum role resolves competing model suggestions',()=>{
+    const scores=Object.fromEntries(FAMILIES.drums.map(tag=>[tag,.01]));scores.kick=.4;scores.snare=.39;
+    assert.equal(roleEvidence(['drums'],scores).mode,'alternatives');
+    assert.deepEqual(roleEvidence(['drums','kick'],scores),{mode:'single',candidates:['kick'],assigned:'kick'});
+    assert.equal(roleEvidence(['drums','kick','snare'],scores).mode,'alternatives');
 });
 
 test('CLAP mel features match the native Transformers frontend reference', async () => {

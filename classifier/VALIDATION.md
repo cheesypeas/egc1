@@ -325,3 +325,29 @@ melodic context and the fitted exported clock. All seven JavaScript test
 suites pass. The Chrome admission workflow passes marked correction,
 explicit approval, exact native output, publication, reflagging, rejection
 and retained decisions.
+
+## Filename hint precedence — 2026-11-12
+
+The in-progress EgcSamples parent run contained 36 drum hits: ten hats,
+fourteen kicks and twelve snares. Whole-path token union incorrectly added
+`synth + bass + fx` from the Hotcakes pack title and its `Sounds And Fx`
+ancestor to every hit. The resulting synth tag also introduced irrelevant
+`uncertain-root` validation failures. Saved acoustic predictions correctly
+identified the drum roles in these examples.
+
+Hint policy `nearest-name-hints-v3` uses the filename first and the nearest
+informative folder as fallback, including plural role directories. The recorded
+modifier can still be inherited. Explicit assigned roles resolve acoustic
+alternatives for admission while raw model evidence remains unchanged. On
+resumption, obsolete automatic hint assignments are withdrawn until checked;
+saved human approvals and manual overrides retain their authority.
+
+A read-only pipeline replay of all 36 saved rows produces only their expected
+`drums + hat/kick/snare` assignments, removes every irrelevant root failure,
+and reuses all 36 analyses and embeddings with zero model calls. Thirty pass
+the remaining preparation checks; six still need attack review. All outputs
+were captured in memory without changing source audio or live metadata.
+Regression tests cover nested pack names, nearest plural directories, Windows
+paths, inherited recorded modifiers, resolved role alternatives, and cached
+repair of stale assignments with accurate bank totals. All seven JavaScript
+suites pass.

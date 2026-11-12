@@ -73,6 +73,31 @@ test('completed sources publish once, cached reruns and corrections retain accur
     assert.deepEqual(events.at(-1).summary, f.pipeline.report.bankSummary);
 });
 
+test('nested drum hints replace contaminated cached categories without rerunning models',async()=>{
+    const events=[],f=await fixture(event=>events.push(event));
+    f.files=f.files.slice(0,1).map(item=>({...item,path:'Bass Boutique/HC1_Sounds_And_Fx/HC1_Drum_Hits/HC1_Kicks/HC1_Kick_12.wav'}));
+    const scores=Object.fromEntries([...Object.values(FAMILIES).flat(),'silence'].map(tag=>[tag,.01]));
+    scores.kick=.4;scores.snare=.39;f.pipeline.inference.scores=async()=>scores;
+    await f.pipeline.run(f);
+    const workspace=await f.pipeline.folder.json('.egc1/workspace.json'),row=workspace.entries[0];
+    assert.deepEqual(row.tags,['drums','kick']);assert.equal(row.state,'ready');
+    assert.equal(row.browserRoleEvidence.mode,'single');
+    assert.equal((await f.pipeline.folder.json(`.egc1/semantic/${row.id}.json`)).roleEvidence.mode,'alternatives','retain original model uncertainty for evaluation');
+    row.tags=['drums','kick','synth','bass','fx'];row.output.tags=[...row.tags];row.classification.hintMethod='token-hints-v2';
+    await f.pipeline.folder.writeJson('.egc1/workspace.json',workspace);
+    const files=[...f.files,...[...f.pipeline.folder.outputs].map(([path,file])=>({path,file}))];
+    f.pipeline.inference.audio=async()=>{throw Error('Unexpected model call');};
+    f.pipeline.inference.analyse=async()=>{throw Error('Unexpected analysis call');};
+    events.length=0;await f.pipeline.run({...f,files});
+    const first=events.find(event=>event.type==='output' && event.path==='.egc1/library.json');
+    assert.equal(JSON.parse(await first.blob.text()).entries.length,0,'withdraw stale automatic hints before reclassification');
+    const current=[...f.pipeline.rows.values()][0];
+    assert.deepEqual(current.tags,['drums','kick']);assert.deepEqual(current.output.tags,['drums','kick']);
+    assert.equal(f.pipeline.report.newEmbeddings,0);assert.equal(f.pipeline.report.reusedAnalysis,1);
+    assert.equal(f.pipeline.report.bankSummary.banks[0][0].sounds,1);
+    assert.equal(f.pipeline.report.bankSummary.banks[2][0].sounds,0);
+});
+
 test('pause after a result saves the completed source and leaves the remainder resumable', async () => {
     let pipeline;
     const f = await fixture(event => { if (event.type === 'result') { pipeline.pause = true; } });

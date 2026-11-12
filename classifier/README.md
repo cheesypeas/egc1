@@ -52,7 +52,12 @@ analysis work; CLAP and Beat This! already infer on one channel. Long samples
 use up to three CLAP crops, and beat tracking repeats the source for context.
 
 Classification, silence splitting and loop timing are enabled by default.
-Filename/folder hints can be disabled for acoustic-only evaluation. Extracted
+Hints use the filename first, then the nearest informative folder. Broader pack
+names do not add unrelated categories to a specifically named sound. For example,
+`Bass Boutique/Sounds And Fx/Kicks/Kick_12.wav` receives `drums + kick`.
+A specific assigned drum role resolves competing acoustic role suggestions;
+original model predictions remain saved separately. Filename/folder hints can
+be disabled for acoustic-only evaluation. Extracted
 hit kits are optional. Silence-separated regions remain ordinary samples;
 extracted kits are generated only from drum loops.
 

@@ -1,6 +1,6 @@
 import {audioInfo, readWav, scanWavRegions, energyEnvelope, splitEnvelope, encodeWav, hashFile, hashBytes} from './audio.js';
 import {Inference, PIPELINE, FRONTEND} from './inference.js';
-import {classifyScores, roleEvidence, nameHints, applyHints, bankSummary, BANKS} from './taxonomy.js';
+import {classifyScores, roleEvidence, nameHints, applyHints, bankSummary, BANKS, HINT_METHOD} from './taxonomy.js';
 import {Folder, validAnalysis, validEmbedding, validOverrides, validBanks} from './storage.js';
 import {assessPreparation, playableOutput, publishWorkspace, readWorkspace, PREPARATION, reviewIdentity} from './preparation.js';
 
@@ -72,8 +72,9 @@ export class Pipeline {
             for (const row of this.rows.values()) {
                 if (row.state !== 'ready') { continue; }
                 const flags = await this.flags(row.id, row.provenance);
-                if ((!row.admission && row.preparation?.method !== PREPARATION) || flags.needsAttention) {
-                    row.state = 'needs-review'; row.preparation = {...row.preparation, reasons:[flags.needsAttention ? 'instrument-attention' : 'awaiting-validation']};
+                const staleHints = row.tagsSource === 'name+audio-model' && row.classification?.hintMethod !== HINT_METHOD;
+                if ((!row.admission && (row.preparation?.method !== PREPARATION || staleHints)) || flags.needsAttention) {
+                    row.state = 'needs-review'; row.preparation = {...row.preparation, reasons:[flags.needsAttention ? 'instrument-attention' : staleHints ? 'awaiting-classification' : 'awaiting-validation']};
                 }
             }
             this.manifest = {version: 1, pipeline: this.pipeline, producer: 'egc.one browser classifier', state: 'processing',
@@ -330,12 +331,13 @@ export class Pipeline {
         const recorded = await this.folder.json(`.egc1/recordings/${recordedId}.json`);
         const tags = [...new Set(manual || assigned)];
         if (recorded?.version === 1 && recorded.id === recordedId && !tags.includes('recorded')) { tags.push('recorded'); }
-        const preparation = assessPreparation(item.channels, info.rate, data, tags, evidence);
+        const assignedEvidence = roleEvidence(tags, scores);
+        const preparation = assessPreparation(item.channels, info.rate, data, tags, assignedEvidence);
         const row = {id, path: item.path, bytes: file.size, state: preparation.reasons.length ? 'needs-review' : 'ready', rate: info.rate, samples: info.frames, channels: info.channels,
             tags, tagsSource: manual ? 'manual' : substantiveHints.length ? 'name+audio-model' : 'audio-model', needsReview: !manual,
             preparation,
-            classification: {...this.policy, ...(substantiveHints.length ? {hintMethod: 'token-hints-v2', hintTags: hints, audioTags: raw.tags} : {})},
-            browserRoleEvidence: evidence, ...(item.provenance ? {provenance: item.provenance} : {})};
+            classification: {...this.policy, ...(substantiveHints.length ? {hintMethod: HINT_METHOD, hintTags: hints, audioTags: raw.tags} : {})},
+            browserRoleEvidence: assignedEvidence, ...(item.provenance ? {provenance: item.provenance} : {})};
         const reviewId = item.provenance ? 's-' + await hashBytes(new TextEncoder().encode(`region-v1:${item.provenance.sourceId}:${item.provenance.start}:${item.provenance.end}:${id}`)) : 's-' + id;
         const review = this.reviews[reviewId];
         const flags = await this.flags(id, item.provenance);
