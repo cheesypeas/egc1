@@ -68,11 +68,11 @@ export class Pipeline {
                 sourceFiles: sources.length, completedFiles: 0, readySamples: 0, reusedAnalysis: 0,
                 newEmbeddings: 0, reusedEmbeddings: 0, separatedRegions: 0, kits: 0, hits: 0, pendingReview: 0, failures: [], predictions: {}};
             const paths = new Set(sources.map(source => source.path));
-            this.rows = new Map((previous?.entries || []).filter(row => paths.has(sourceOf(row))).map(row => [row.path, row]));
+            this.rows = new Map((previous?.entries || []).filter(row => paths.has(sourceOf(row))).map(row => [row.path, structuredClone(row)]));
             for (const row of this.rows.values()) {
                 if (row.state !== 'ready') { continue; }
                 const flags = await this.flags(row.id, row.provenance);
-                if (row.preparation?.method !== PREPARATION || flags.needsAttention) {
+                if ((!row.admission && row.preparation?.method !== PREPARATION) || flags.needsAttention) {
                     row.state = 'needs-review'; row.preparation = {...row.preparation, reasons:[flags.needsAttention ? 'instrument-attention' : 'awaiting-validation']};
                 }
             }
@@ -123,7 +123,7 @@ export class Pipeline {
                             else { this.report.pendingReview++; }
                             this.report.predictions[result.row.tags.join(' + ')] = (this.report.predictions[result.row.tags.join(' + ')] || 0) + 1;
                             this.emit({type: 'result', row: result.row, analysis: result.data, cached: result.cached, feedback: await this.flags(result.row.id, result.row.provenance)});
-                            if (options.kits && result.row.state === 'ready' && result.row.tags.includes('drum-loop')) {
+                            if (options.kits && result.row.state === 'ready' && result.row.tags.includes('drum-loop') && !result.row.preparation?.warnings?.includes('uncertain-chop-map')) {
                                 try { await this.kit(item, result); }
                                 catch (error) { this.failure(`${item.path} [kit export]`, error); }
                             }

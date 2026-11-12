@@ -49,7 +49,7 @@ function itemFolder(item) {
 }
 
 function itemReasons(item) {
-  return [...new Set([...(item.duplicateOf ? ["similar-loop"] : []), ...(item.preparation?.reasons || []), ...(item.review?.reasons || []),
+  return [...new Set([...(item.duplicateOf ? ["similar-loop"] : []), ...(item.preparation?.reasons || []), ...(item.preparation?.warnings || []), ...(item.review?.reasons || []),
     ...(item.instrument?.needsAttention ? ["instrument-attention"] : [])])];
 }
 

@@ -1,6 +1,6 @@
 import {encodeWav, hashBytes, hashFile, audioInfo, readWav} from './audio.js';
 
-export const PREPARATION = 'playable-phrase-and-attack-validation-v1';
+export const PREPARATION = 'playable-phrase-and-attack-validation-v2';
 export async function reviewIdentity(row) {
     if (row.reviewId) { return row.reviewId; }
     const p = row.provenance;
@@ -89,8 +89,8 @@ export function validateAttacks(audio, rate, candidates, facts = signalFacts(aud
     return {accepted:filtered.filter(at=>!periodic.has(at)), rejected:unique([...rejected,...periodic])};
 }
 
-function fragmentSimilarity(facts, a, b, rate, length) {
-    const width = Math.min(Math.round(rate * .05), length - Math.max(a, b));
+function fragmentSimilarity(facts, a, b, rate, length, window = rate*.05) {
+    const width = Math.min(Math.round(window), length - Math.max(a, b));
     if (width < rate * .012) { return 0; }
     let dot = 0, aa = 0, bb = 0;
     const hop = Math.max(1, Math.round(rate * .002));
@@ -104,58 +104,128 @@ function fragmentSimilarity(facts, a, b, rate, length) {
     return dot / Math.max(1e-12, Math.sqrt(aa * bb));
 }
 
-export function findLoopPhrase(audio, rate, beats, attacks, facts = signalFacts(audio, rate), downbeats = []) {
-    const intervals = beats.slice(1).map((at, i) => at - beats[i]).filter(value => value >= rate * .15 && value <= rate * 2);
-    const period = median(intervals);
-    if (!period || intervals.length < 3) { return null; }
-    const consistent = intervals.filter(value => Math.abs(value - period) <= period * .08).length / intervals.length;
-    if (consistent < .7) { return null; }
-    // Search inside the source, rather than assuming its first/last event is
-    // the phrase boundary. Bound the search independently of dense raw onsets.
-    const points = unique([facts.start, ...attacks.filter(at => at >= facts.start && at < facts.end), facts.end]);
-    const candidates = [];
-    const barEvidence = downbeats.length >= 2 && downbeats.slice(1).every((at,i) => Math.abs((at-downbeats[i])/period-4) <= .15);
-    for (let i = 0; i < points.length && i < 512; i++) {
-        for (let j = i + 1; j < points.length && j < 512; j++) {
-            const start = points[i], end = points[j], pulses = Math.round((end - start) / period);
-            if (pulses < 2 || Math.abs(end - start - pulses * period) > period * .04) { continue; }
-            if (barEvidence && pulses % 4 !== 0) { continue; }
-            const similarity = fragmentSimilarity(facts, start, end, rate, audio.length);
-            const endIsFile = Math.abs(end - facts.end) <= rate * .002;
-            const quietSeam = endIsFile && facts.power(Math.max(start, end - rate * .005), end) <
-                Math.max(1e-10, facts.power(start, start + rate * .02) * .001);
-            const barDistance = at => {
-                const phase = ((at-downbeats[0])%(period*4)+period*4)%(period*4);
-                return Math.min(phase,period*4-phase);
-            };
-            const alignedBar = barEvidence && barDistance(start) <= period*.08 && barDistance(end) <= period*.08;
-            const seam = Math.abs(audio[start]-audio[Math.max(start,end-1)]) / Math.max(1e-9,facts.peak);
-            if ((similarity < .92 && !quietSeam && !alignedBar) || seam > .05) { continue; }
-            const covered = beats.filter(at => at >= start && at < end).length;
-            if (Math.abs(covered - pulses) > 1) { continue; }
-            candidates.push({start, end, period: (end - start) / pulses, observedPeriod: period, pulses,
-                confidence: Math.min(consistent, quietSeam || alignedBar ? .95 : similarity), similarity});
+function audioContextSimilarity(audio, rate, phrase, facts, window) {
+    if(audio.length-phrase.end<Math.min(window,rate*.15)) { return 0; }
+    return fragmentSimilarity(facts,phrase.start,phrase.end,rate,audio.length,window);
+}
+
+function gridAgreement(beats, start, end, pulses, rate) {
+    const period=(end-start)/pulses;
+    const points=beats.filter(at=>at>=start-rate*.1 && at<=end+rate*.05);
+    if(points.length<3) { return null; }
+    let best=null;
+    for(const divisor of [1,2]) {
+        const step=period/divisor;
+        const residuals=points.map(at=>((at-start)/step-Math.round((at-start)/step))*step);
+        const shift=median(residuals.filter(value=>Math.abs(value)<=rate*.04));
+        const errors=points.map(at=>Math.abs((at-start-shift)/step-Math.round((at-start-shift)/step))*step);
+        const width=Math.max(rate*.018,step*.035);
+        const matched=errors.filter(error=>error<width).length/points.length;
+        const loss=errors.reduce((sum,error)=>sum+Math.min(error/width,3),0)/points.length;
+        const score=matched-.15*loss-Math.abs(shift)/(rate*.04)*.03;
+        if(!best || score>best.score) { best={score,matched,loss,divisor,shift}; }
+    }
+    return best;
+}
+
+function supportedBarSpan(downbeats, start, end, period, pulses, rate) {
+    for(let i=1;i<downbeats.length;i++) {
+        const bar=Math.round((downbeats[i]-downbeats[i-1])/period);
+        if(bar<3 || bar>7 || pulses%bar!==0 || Math.abs(downbeats[i]-downbeats[i-1]-bar*period)>period*.15) { continue; }
+        const width=Math.max(rate*.025,period*.06);
+        if(downbeats.some(at=>Math.abs(at-start)<width) && downbeats.some(at=>Math.abs(at-end)<width)) { return true; }
+    }
+    return false;
+}
+
+function refinePhraseEnd(audio, rate, start, end, facts) {
+    if(end===audio.length) { return end; }
+    const radius=Math.round(rate*.006), hop=Math.max(1,Math.round(rate*.00025));
+    let best={end,score:-Infinity};
+    for(let at=Math.max(start+1,end-radius);at<Math.min(audio.length,end+radius);at+=hop) {
+        const similarity=fragmentSimilarity(facts,start,at,rate,audio.length);
+        const jump=Math.abs(audio[start]-audio[at-1])/Math.max(1e-9,facts.peak);
+        const score=similarity-jump*.5-.015*Math.abs(at-end)/radius;
+        if(score>best.score) { best={end:at,score}; }
+    }
+    return best.end;
+}
+
+export function findLoopPhrase(audio, rate, beats, attacks, facts = signalFacts(audio, rate), downbeats = [], verifiedAttacks = attacks) {
+    if(facts.silent || beats.length<3) { return null; }
+    // Raw beat predictions may contain missed beats or eighth notes. Assess
+    // their agreement with each performed span, instead of multiplying one
+    // quantised median interval into an increasingly inaccurate endpoint.
+    const points=unique(attacks.filter(at=>at>=facts.start && at<facts.end));
+    const boundaries=points.filter((at,i)=>i===0 || at-points[i-1]>rate*.02);
+    const starts=unique([facts.start,...verifiedAttacks.filter(at=>at>=facts.start && at<facts.end)]).slice(0,32);
+    const candidates=[];
+    const quietEnd=facts.power(audio.length-rate*.005,audio.length)<Math.max(1e-10,facts.power(facts.start,facts.start+rate*.02)*.001);
+    const ends=quietEnd ? [...boundaries,audio.length] : boundaries;
+    for(const start of starts) {
+        for(const roughEnd of ends) {
+            const span=roughEnd-start;
+            if(span<rate*.4) { continue; }
+            for(let pulses=2;pulses<=Math.min(128,Math.floor(span/(rate*.27)));pulses++) {
+                const period=span/pulses;
+                if(period<rate*.27 || period>rate*1.2) { continue; }
+                // Odd/non-binary spans need bar evidence; an extra detected
+                // hit must not silently turn an eight-beat loop into seven.
+                if(!Number.isInteger(Math.log2(pulses)) && !supportedBarSpan(downbeats,start,roughEnd,period,pulses,rate)) { continue; }
+                const fit=gridAgreement(beats,start,roughEnd,pulses,rate);
+                if(!fit || fit.matched<.7 || fit.loss>1.2 || (roughEnd===audio.length && fit.score<.85)) { continue; }
+                const events=verifiedAttacks.filter(at=>at>=start && at<roughEnd);
+                if(events.length<2 || events.at(-1)-events[0]<span*.4) { continue; }
+                const coverage=span/Math.max(1,facts.end-facts.start);
+                // Coverage favours a complete phrase over an equally plausible
+                // half phrase; early starts keep a good first attack intact.
+                const score=fit.score+.4*coverage-.12*Math.abs(Math.log2(period/(rate*.5)))+
+                    (Number.isInteger(Math.log2(pulses)) ? .025 : 0)-
+                    .35*(start-facts.start)/Math.max(1,facts.end-facts.start);
+                candidates.push({start,roughEnd,pulses,score,fit});
+            }
         }
     }
-    // Prefer complete, longer phrases among candidates with good seam evidence.
-    candidates.sort((a, b) => (b.end - b.start) - (a.end - a.start) || b.confidence - a.confidence || a.start - b.start);
-    return candidates[0] || null;
+    candidates.sort((a,b)=>a.start-b.start || b.score-a.score || b.roughEnd-a.roughEnd);
+    for(const candidate of candidates) {
+        const {start,roughEnd,pulses,fit}=candidate;
+        const end=refinePhraseEnd(audio,rate,start,roughEnd,facts);
+        const seam=Math.abs(audio[start]-audio[end-1])/Math.max(1e-9,facts.peak);
+        if(seam>.03) { continue; }
+        return {method:'onset-anchored-grid-consensus-v2',start,end,pulses,period:(end-start)/pulses,
+            observedPeriod:(roughEnd-start)/pulses,confidence:Math.max(0,Math.min(.99,fit.matched*(1-fit.loss*.1))),
+            gridAgreement:fit.matched,gridResidual:fit.loss,similarity:fragmentSimilarity(facts,start,end,rate,audio.length)};
+    }
+    return null;
 }
 
 export function assessPreparation(channels, rate, data, tags, evidence = {}) {
     const facts = signalFacts(channels[0], rate), attacks = validateAttacks(channels[0], rate, data.loop.transients || [], facts);
     const reasons = [];
     if (facts.silent) { reasons.push('silent-audio'); }
-    if (!tags.length || tags.includes('unclassified') || evidence.mode === 'alternatives') { reasons.push('uncertain-category'); }
+    if (!tags.length || tags.includes('unclassified') || evidence.mode === 'alternatives' ||
+        (tags.includes('loops') && !tags.some(tag=>['drum-loop','melodic-loop','vocal-loop'].includes(tag)))) { reasons.push('uncertain-category'); }
     if (tags.includes('synth') && !data.pitch.hasRoot) { reasons.push('uncertain-root'); }
     let bounds = {start: facts.start, end: facts.end}, phrase = null;
     if (tags.includes('loops')) {
-        phrase = findLoopPhrase(channels[0], rate, data.loop.beats || [], unique([...attacks.accepted, ...(data.loop.transients || [])]), facts, data.loop.downbeats || []);
+        phrase = findLoopPhrase(channels[0], rate, data.loop.beats || [], unique([...attacks.accepted, ...(data.loop.transients || [])]), facts, data.loop.downbeats || [], attacks.accepted);
         if (!phrase) { reasons.push('uncertain-loop-phrase'); }
-        else { bounds = {start: phrase.start, end: phrase.end}; }
+        else {
+            bounds = {start: phrase.start, end: phrase.end};
+            if(!tags.includes('drum-loop')) {
+                // Rhythm alone does not establish a melodic/vocal phrase join.
+                // Require matching performed context beyond a single attack;
+                // otherwise retain the proposed bounds for manual review.
+                const window=Math.min(rate*.5,phrase.period*2);
+                phrase.contextSimilarity=audioContextSimilarity(channels[0],rate,phrase,facts,window);
+                if(phrase.contextSimilarity<.95) { reasons.push('uncertain-loop-phrase'); }
+            }
+        }
     }
-    if (attacks.rejected.some(at => at >= bounds.start && at < bounds.end)) { reasons.push('uncertain-attacks'); }
-    return {version: 1, method: PREPARATION, reasons, bounds, phrase, attacks, silent: facts.silent};
+    const uncertainAttacks=attacks.rejected.some(at=>at>=bounds.start && at<bounds.end);
+    const warnings=uncertainAttacks && tags.includes('loops') ? ['uncertain-chop-map'] : [];
+    if(uncertainAttacks && !tags.includes('loops')) { reasons.push('uncertain-attacks'); }
+    return {version: 2, method: PREPARATION, reasons, warnings, bounds, phrase, attacks, silent: facts.silent};
 }
 
 export function sliceAnalysis(data, start, end, id, channels, {transients = null, root = null, phrase = null, manual = false} = {}) {
@@ -182,16 +252,13 @@ export function sliceAnalysis(data, start, end, id, channels, {transients = null
         item.gateStrengths = starts.map(at => strengths.get(at) ?? 1);
         item.beatPeriod = phrase ? samples / phrase.pulses : 0;
         item.barOrigin = 0; item.beatConfidence = phrase?.confidence || 0;
-        // These are checked, performed phrase bounds. Derive a closed grid only
-        // after cropping; native readers also rebuild their grid from the beats.
+        // These are checked, performed phrase bounds. Publish their fitted grid
+        // after cropping: retaining missed/extra raw detector beats would let a
+        // native reader undo the validated timing when rebuilding its clock.
         if (phrase && !['pitch','acousticPitch'].includes(name)) {
-            if (manual) {
-                item.beats = Array.from({length:phrase.pulses},(_,i)=>Math.round(i*samples/phrase.pulses));
-                item.downbeats = item.beats.filter((_,i)=>i%4===0);
-                item.beatDetector = 'manual-phrase-beat-count-v1';
-            } else if (item.beats.length === phrase.pulses-1 && item.beats[0] > item.beatPeriod*.4) {
-                item.beats.unshift(0);
-            }
+            item.beats = Array.from({length:phrase.pulses},(_,i)=>Math.round(i*samples/phrase.pulses));
+            item.downbeats = item.beats.filter((_,i)=>i%4===0);
+            item.beatDetector = manual ? 'manual-phrase-beat-count-v1' : 'validated-performed-phrase-grid-v2';
         }
         item.eighths = Array.from({length: phrase ? phrase.pulses * 2 + 1 : 9}, (_, i) => Math.round(i * samples / (phrase ? phrase.pulses * 2 : 8)));
         if (name === 'loop') {

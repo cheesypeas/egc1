@@ -181,6 +181,19 @@ can sit inside the source with extra events at either end. Model confidence alon
 does not approve a loop. Dense periodic triggers and ambiguous cuts/categories
 go to **manual review** instead of becoming playable sounds or kit hits.
 
+Loop endpoints follow performed attacks and a fitted beat grid, allowing missed
+or subdivided model beats without extending into an extra hit. The exported
+clock uses that fitted grid rather than the raw detector's missing/extra beats.
+Melodic/vocal loops also need matching performed context across the join.
+Uncertain chop positions alone do not exclude a supported whole loop: they show
+**loop accepted; chop positions need checking**, and automatic kit extraction
+is withheld. Ambiguous phrase boundaries still require manual review.
+
+After upgrading, close existing egc.one tabs, reopen the classifier and prepare
+the same folder with **reanalyse existing audio** unchecked. Saved raw analyses
+and embeddings are reused for the new preparation checks. Existing human
+approvals retain their exact cuts and beat counts throughout reprocessing.
+
 Both automatic checks and human issue reports can flag an exception. Flagged
 sounds are excluded from `library.json`, generated kits and accepted bank counts.
 In **review prepared samples**, the main flow is **listen and mark corrections

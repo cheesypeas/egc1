@@ -156,3 +156,23 @@ test('forced reanalysis cannot overwrite a manual root when output bytes match t
     assert.equal((await f.pipeline.folder.json(`.egc1/entries/${output.id}.json`)).pitch.root,43);
     assert.equal((await f.pipeline.folder.json(`.egc1/browser/raw-analysis/${output.id}.json`)).pitch.root,60);
 });
+
+test('upgrading preparation does not temporarily withdraw or replace a human-approved cut',async()=>{
+    const events=[],f=await fixture(event=>events.push(event));await f.pipeline.run(f);
+    await approve(f,'kick.wav',{attackFrame:10,endFrame:700});
+    const workspace=await f.pipeline.folder.json('.egc1/workspace.json');
+    const approved=workspace.entries.find(row=>row.path==='kick.wav');
+    const originalOutput=structuredClone(approved.output);
+    approved.preparation.method='playable-phrase-and-attack-validation-v1';
+    await f.pipeline.folder.writeJson('.egc1/workspace.json',workspace);
+    const files=[...f.files,...[...f.pipeline.folder.outputs].map(([path,file])=>({path,file}))];
+    events.length=0;
+    await f.pipeline.run({...f,files});
+    for(const event of events.filter(event=>event.type==='output' && event.path==='.egc1/library.json')) {
+        assert(JSON.parse(await event.blob.text()).entries.some(row=>row.id===originalOutput.id),'approved audio stays published throughout reprocessing');
+    }
+    const current=(await f.pipeline.folder.json('.egc1/workspace.json')).entries.find(row=>row.path==='kick.wav');
+    assert.deepEqual(current.output,originalOutput);
+    assert.equal(current.state,'ready');
+    assert.equal(f.pipeline.report.newEmbeddings,0);
+});

@@ -73,3 +73,66 @@ test('left-channel cache migration reuses matching embeddings and rejects right-
     assert(!validEmbedding({...embedding,selectedChannel:1},'a',info,frontend,'model'));
     assert(!validEmbedding({...embedding,frontend:'other'},'a',info,frontend,'model'));
 });
+
+test('missed and subdivided model beats retain the first usable attack and stop before the extra hit',()=>{
+    const period=rate*.5,start=Math.round(rate*.2),wave=new Float32Array(start+period*9),attacks=[];
+    for(let i=0;i<=8;i++){const at=start+i*period;burst(wave,at,.7,90);attacks.push(at);}
+    const beats=Array.from({length:8},(_,i)=>start+(i+1)*period+Math.round(rate*.012));
+    beats.splice(2,0,start+period*2.5);
+    const phrase=findLoopPhrase(wave,rate,beats,attacks);
+    assert(phrase);assert(Math.abs(phrase.start-start)<4);
+    assert(Math.abs(phrase.end-(start+8*period))<rate*.007);
+    assert.equal(phrase.pulses,8);
+});
+
+test('a sparse detector with a missed beat can still support a four-beat phrase',()=>{
+    const period=Math.round(rate*.44),start=320,wave=new Float32Array(start+period*4+rate*.15),attacks=[];
+    for(let i=0;i<=4;i++){const at=start+i*period;burst(wave,at,.7,110);attacks.push(at);}
+    const phrase=findLoopPhrase(wave,rate,[start+180,start+period+180,start+3*period+180],attacks);
+    assert(phrase);assert.equal(phrase.pulses,4);
+    assert(Math.abs(phrase.end-(start+4*period))<rate*.007);
+});
+
+test('a rejected tail candidate warns about chops without withholding a supported whole loop',()=>{
+    const period=rate*.5,start=320,wave=new Float32Array(start+period*4+rate*.15),attacks=[];
+    for(let i=0;i<=4;i++){const at=start+i*period;burst(wave,at,.7,120);attacks.push(at);}
+    const data={pitch:{hasRoot:false},loop:{beats:attacks,downbeats:[start,start+period*4],transients:[...attacks,start+rate*.025].sort((a,b)=>a-b)}};
+    const result=assessPreparation([wave],rate,data,['loops','drum-loop']);
+    assert(result.phrase);assert(!result.reasons.length);
+    assert(result.warnings.includes('uncertain-chop-map'));
+    assert(!result.attacks.accepted.includes(start+rate*.025));
+});
+
+test('a lone ringing hit with spurious onset and beat candidates remains excluded as a loop',()=>{
+    const wave=new Float32Array(rate*2);burst(wave,320,.8,120);
+    const result=assessPreparation([wave],rate,{pitch:{hasRoot:false},loop:{beats:[320,8320,16320,24320],transients:[320,480,640,800,960]}},['loops','drum-loop']);
+    assert(result.reasons.includes('uncertain-loop-phrase'));
+});
+
+test('published loop clocks use the validated span instead of retaining missing or extra detector beats',async()=>{
+    const {sliceAnalysis}=await import('../preparation.js');
+    const role={samples:40000,rate,transients:[1000,9000,17000,25000,33000],beats:[9500,17500,21500,33500],downbeats:[9500],gateStarts:[1000],gateStrengths:[1]};
+    const result=sliceAnalysis({loop:role},1000,33000,'output',1,{phrase:{pulses:4,confidence:.9}});
+    assert.deepEqual(result.loop.beats,[0,8000,16000,24000]);
+    assert.equal(result.loop.beatPeriod,8000);
+    assert.equal(result.loop.beatDetector,'validated-performed-phrase-grid-v2');
+    assert.equal(result.loop.loopEndSample,32000);
+});
+
+test('a complete three-beat phrase is kept instead of forcing a four-beat or half-phrase cut',()=>{
+    const period=rate*.5,start=320,wave=new Float32Array(start+period*3+rate*.15),attacks=[];
+    for(let i=0;i<=3;i++){const at=start+i*period;burst(wave,at,.7,i%3===0?90:500);attacks.push(at);}
+    const phrase=findLoopPhrase(wave,rate,attacks,attacks,signalFacts(wave,rate),[start,start+period*3]);
+    assert(phrase);assert.equal(phrase.pulses,3);
+    assert(Math.abs(phrase.end-(start+3*period))<rate*.007);
+});
+
+test('a melodic loop needs matching performed context beyond its rhythmic grid',()=>{
+    const period=rate*.5,start=320,wave=new Float32Array(start+period*4+rate*.15),attacks=[];
+    for(let i=0;i<=4;i++){const at=start+i*period;burst(wave,at,.7,i===4?2400:120);attacks.push(at);}
+    const data={pitch:{hasRoot:true},loop:{beats:attacks,downbeats:[start,start+period*4],transients:attacks}};
+    const result=assessPreparation([wave],rate,data,['loops','melodic-loop']);
+    assert(result.phrase,'retain a proposed cut for review');
+    assert(result.reasons.includes('uncertain-loop-phrase'),'a rhythmic grid alone cannot establish melodic closure');
+    assert(result.phrase.contextSimilarity<.95);
+});

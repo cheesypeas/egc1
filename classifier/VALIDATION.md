@@ -288,3 +288,40 @@ validation of its loop classifications or the 117 generated fragments. No user
 audio or live instrument metadata was changed for this check. Initial comparison
 took approximately 11 seconds on the development machine; fingerprints and pair
 results are cached for subsequent publications.
+
+## Performed phrase cuts against saved approvals — 2026-11-12
+
+Seven saved Future Music CD1 loop approvals were compared read-only with the
+new phrase search. All seven beat counts match. Maximum absolute start error
+is 0.681 ms and end error 6.282 ms; the old proposals differed by as much as
+283 ms. These are agreement measurements against seven human marks, not a
+listening certification of the remaining library. No source audio or live
+folder metadata was changed. The generic comparison can be repeated with
+Node 22: `node classifier/tests/check-reviewed-loops.mjs FOLDER --check`.
+
+Preparation v2 fits performed onset spans against beat/subdivision evidence,
+retains the earliest supported start, and checks the join. Non-binary beat
+spans require bar evidence; melodic/vocal phrases also require matching
+performed context. Rejected chop candidates warn separately from whole-loop
+admission, and prevent automatic kit generation. Published clocks use the
+fitted phrase grid, so missed or extra raw detector beats cannot reconstruct
+the old timing. Original raw analysis remains available for evaluation.
+
+A broader read-only scan of 64 loop-labelled candidates proposes 50 as
+automatically eligible and withholds 14. This is candidate eligibility, not
+50 auditioned or certified loops. The scan took about 27 seconds on this
+development machine; no neural model was invoked. Both previously admitted
+bad cuts receive new proposed endpoints.
+
+A read-through pipeline check preserved all seven existing approved outputs
+and their review timestamps exactly, reusing all seven analyses and embeddings
+with zero new embeddings or model calls. Outputs were captured in memory,
+with no writes to the source folder. A preparation-version regression also
+checks that approved sounds remain published during the upgrade.
+
+The preparation suite covers missed/subdivided beats, an extra final hit,
+three-beat bar evidence, ringing single hits, independent chop warnings,
+melodic context and the fitted exported clock. All seven JavaScript test
+suites pass. The Chrome admission workflow passes marked correction,
+explicit approval, exact native output, publication, reflagging, rejection
+and retained decisions.
