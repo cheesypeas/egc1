@@ -14,19 +14,21 @@ The SVG panel and recording timeline in `manual/assets/` are original drawings.
 The supplied reference photo is deliberately not included. The owner confirmed
 the yellow-button order as Transport, Instrument, Mode, Quantise. With keys
 along the bottom, the green turntable is upper left, green joystick upper right,
-orange rollerball lower right, and purple Loop button lower left.
+orange rollerball lower right, and purple Loop button lower left. The owner
+confirmed that the turntable and rollerball are spun, not pressed; describe
+modifier combinations as holding the button while spinning the control.
 
 ## Content sources
 
 This edition was checked on 12 November 2026 against:
 
-- ToySequencer local `master`, `8b65d27`: input dispatch in `Controller.cpp` and
+- ToySequencer local `master`, `2a1e281`: input dispatch in `Controller.cpp` and
   `PianoKeyInput.cpp`; channel mapping/defaults in `ChannelConfiguration.cpp/.h`;
   mode/bank coupling in `ModeManager.cpp`; FX maps in `Parameters.cpp` and keyed
   values/Hold in `FxKnobControl.cpp`; first-loop rounding, recording, grids and
   undo/redo in `Sequencer.cpp` and `FirstLoopQuantise.cpp`; readiness display in
-  `StartupSequence.cpp`; cut editing in `LoopCutControl.cpp`.
-- Its pinned ToySampler `993cf998ab5c22de4a143f1e81e50e9b782d67e0`: sample bank
+  `StartupSequence.cpp`; whole-keyboard cut shifts in `LoopCutControl.cpp`.
+- Its pinned ToySampler `5dacc82d03d18f4ed16a758a9a49d55222cdec8a`: sample bank
   discovery, feedback and held-key assignments in `docs/SAMPLE_LIBRARY.md`;
   left-channel loading, beat/content cuts and sample quantisation in
   `docs/SAMPLE_ANALYSIS.md`; capture/padded stop in `RecordAudio.cpp` and the
@@ -35,6 +37,8 @@ This edition was checked on 12 November 2026 against:
   `docs/KNOB_LEDS.md`, cross-checked with the source above. Earlier passages and
   historical deployment records can describe superseded controls: the current
   source and later recording sections take precedence.
+- EGC1 website `ca5416b`, `classifier/README.md` and processing/review export
+  controls: published instrument-library export and incremental USB updates.
 - ToyDynamics README and source for Amount/Character and Drive/Muffle.
 - ToyReverb README and `configure.py` for the optional Dragonfly Hall amount
   control. The pinned sampler JSON is a historical reference, not the active
@@ -68,3 +72,7 @@ and `git diff --check`. No firmware or DSP files changed. Browser QA was
 attempted but Chrome crashed in this environment, including its single-process
 fallback; visual layouts, search interactions and rendered Print/PDF remain
 unverified for this edition. The existing stylesheet and JavaScript are unchanged.
+
+The later control refresh
+was checked against controller `2a1e281`, sampler `5dacc82` and the owner’s spin
+gestures; the note/FX quantise key order was checked directly in `Sequencer.cpp`.

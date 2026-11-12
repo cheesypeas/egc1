@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1040 660" fill="none">
   <title>The egc1 instrument: front-panel control map</title>
-  <desc>An original simplified drawing with piano keys along the bottom, four yellow buttons above them, two central knobs, green turntable at upper left, green joystick at upper right, purple Loop button at lower left and orange rollerball at lower right.</desc>
+  <desc>An original simplified drawing with piano keys along the bottom, four yellow buttons above them, two central knobs, green turntable at upper left, green joystick at upper right, purple Loop button at lower left and orange rollerball at lower right. Spin the turntable and rollerball to operate them.</desc>
   <rect width="1040" height="660" fill="#141616"/>
   <path d="M313 160Q365 106 520 110Q675 106 727 160C755 117 829 111 868 158C906 203 897 264 863 290Q898 321 898 393C898 458 850 506 791 494Q732 568 520 575Q308 568 249 494C190 506 142 458 142 393Q142 321 177 290C143 264 134 203 172 158C211 111 285 117 313 160Z" fill="#252b28" stroke="#70816c" stroke-width="2"/>
   <path d="M352 186Q520 128 688 186L722 366Q520 424 318 366Z" fill="#142840" stroke="#395d7c" stroke-width="2"/>
