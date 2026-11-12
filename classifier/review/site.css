@@ -1,0 +1,130 @@
+/* Website framing uses the processor's stylesheet; keep player controls shared. */
+.review-page {
+    --amber:var(--orange);
+    --error:var(--red);
+}
+.review-page h2,.review-page .eyebrow,.review-page .site-header .brand {
+    font-family:var(--mono);
+}
+.review-page .site-header .brand {
+    letter-spacing:normal;
+    font-weight:400;
+}
+.review-page .eyebrow { font-weight:400; }
+.review-toolbar {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:12px;
+    padding:20px 0 0;
+    font-size:13px;
+}
+.review-toolbar .header-actions { flex-wrap:wrap; }
+.review-page .review-folder {
+    max-width:none;
+    margin:0;
+    padding:40px 0 35px;
+    border:0;
+    background:transparent;
+}
+.review-page .review-folder .intro-copy { color:#a1b2a3; }
+.review-page .review-folder .actions {
+    padding:20px 25px;
+    border:1px solid var(--line);
+    border-radius:6px;
+    background:linear-gradient(120deg,#0c120e,#090d0a);
+    font-size:13px;
+}
+.review-page #review-save-mode {
+    font-size:12px;
+    line-height:1.6;
+    margin:12px 0 0;
+    overflow-wrap:anywhere;
+}
+.review-page .app-shell {
+    max-width:1180px;
+    padding:0 42px;
+    grid-template-columns:280px minmax(0,1fr);
+}
+.review-page .sidebar {
+    height:100vh;
+    padding:24px 18px 24px 0;
+    background:transparent;
+}
+.review-page main { min-width:0; padding:24px 0 24px 24px; }
+.review-page .panel { border-radius:6px; padding:20px 24px; }
+.review-page .item-heading h1 { font-size:32px; margin:0 0 5px; }
+.review-page .item-heading .eyebrow { font-size:11px; }
+.review-page button:not(.button) {
+    border-radius:3px;
+    background-color:transparent;
+}
+.review-page button:not(.button):hover:not(:disabled) {
+    border-color:#7da477;
+    background:#152119;
+}
+.review-page button.active,.review-page button.selected {
+    background:#152d17;
+    border-color:var(--green);
+    color:var(--text);
+}
+.review-page button.primary,.review-page .play-button {
+    background-color:var(--green)!important;
+    color:#091408;
+    border-color:var(--green);
+}
+.review-page button.primary:hover:not(:disabled),.review-page .play-button:hover:not(:disabled) { background:#a4ff97!important; }
+.review-page select,.review-page textarea {
+    background-color:#0b100c;
+    border-color:var(--line);
+    border-radius:3px;
+}
+.review-page .tabs { background:#090d0a; }
+.review-page .previous-comparison { background:linear-gradient(120deg,#101a12,#0b100c); }
+@media(max-width:850px) {
+    .review-page .app-shell { padding:0 25px; grid-template-columns:240px minmax(0,1fr); }
+    .review-page .panel { padding:18px; }
+    .review-page main { padding-left:18px; }
+}
+@media(max-width:720px) {
+    .review-page .app-shell { display:block; }
+    .review-page .sidebar { height:auto; padding:18px 0; }
+    .review-page main { padding:20px 0; }
+    .review-toolbar .header-actions { gap:8px; }
+    .review-toolbar .button { min-height:36px; padding:8px 10px; }
+}
+@media(max-width:600px) {
+    .review-page .app-shell { padding:0 18px; }
+    .review-page .review-folder { padding:30px 0 25px; }
+    .review-page .review-folder .actions { padding:16px; gap:10px; }
+    .review-page .site-header .brand { font-size:15px; }
+    .review-page .item-heading h1 { font-size:26px; }
+    .review-page .panel { padding:16px; }
+    .review-toolbar { gap:10px; }
+}
+
+/* Keep folder actions available without repeating the introduction during review. */
+.review-page select { font-size:13px; }
+.library-open .review-folder {
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto;
+    align-items:center;
+    gap:12px;
+    padding:24px 0;
+}
+.library-open .review-folder>.eyebrow,.library-open .review-folder>.intro-copy { display:none; }
+.library-open .review-folder h1 { font-size:30px; margin:0; }
+.library-open .review-folder .actions { border:0; background:none; padding:0; justify-content:flex-end; }
+.library-open #review-save-mode { grid-column:1/-1; margin:0; }
+@media(max-width:600px) {
+    .library-open .review-folder { grid-template-columns:1fr; padding:24px 0; }
+    .library-open .review-folder .actions { justify-content:flex-start; }
+}
+.admission-fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.admission label { display:block; margin:10px 0; }
+.admission input, .admission textarea { display:block; width:100%; margin-top:5px; background:#0b100c; color:#e6eee6; border:1px solid #52664e; padding:9px; }
+.admission .actions { display:flex; gap:10px; flex-wrap:wrap; }
+#admission-state { color:#e8b86a; font-weight:bold; }
+#admission-status { min-height:1.5em; }
+@media (max-width:600px) { .admission-fields { grid-template-columns:1fr; } }

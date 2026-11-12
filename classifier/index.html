@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#050805">
+    <meta name="description" content="Prepare a sample library in your browser. Classify sounds, find loops and split sample collections. Your audio stays on your computer.">
+    <title>sample processing — egc.one</title>
+    <link rel="icon" href="../egc1.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Inconsolata:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./style.css">
+    <script type="module" src="./app.js"></script>
+</head>
+<body>
+    <div class="ambient" aria-hidden="true"></div>
+    <div class="shell">
+        <header class="site-header">
+            <a class="brand" href="../" aria-label="egc.one home"><img src="../egc1.png" width="100" height="85" alt="egc1"><span>egc.one<span class="brand-slash"> / </span><span class="brand-section">tools</span></span></a>
+            <span class="local-badge"><span class="status-dot"></span> runs on your computer</span>
+        </header>
+        <main>
+            <section class="intro" aria-labelledby="title">
+                <p class="eyebrow"><span class="eyebrow-line"></span> EGC1</p>
+                <h1 id="title">Sample processing</h1>
+                <p class="intro-copy">Classify samples, detect loop timing and split files at silence.<br class="desktop-break"> Save audio analysis and categories for EGC1.</p>
+                <div class="principles"><span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 7h10v7H3zM5 7V5a3 3 0 0 1 6 0v2"/></svg> no audio uploads</span><span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m3 8 3 3 7-7"/></svg> source files preserved</span><span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13 5a6 6 0 1 0 1 6M13 1v4H9"/></svg> resume saved processing</span></div>
+            </section>
+
+            <ol class="steps" aria-label="Preparation steps">
+                <li class="current" id="step-choose"><span>01</span> choose a folder</li>
+                <li id="step-process"><span>02</span> process samples</li>
+                <li id="step-review"><span>03</span> review results</li>
+            </ol>
+
+            <section class="panel setup" aria-labelledby="setup-title">
+                <div class="panel-heading"><h2 id="setup-title">sample folder</h2><span class="small-label" id="save-mode">LOCAL FILES ONLY</span></div>
+                <div class="drop-zone" id="drop-zone">
+                    <div class="folder-icon" aria-hidden="true"><svg viewBox="0 0 48 40"><path d="M3 10V6h15l5 5h22v25H3z"/><path d="M3 15h42M24 21v10m-5-5 5-5 5 5"/></svg></div>
+                    <div class="folder-copy"><h3 id="folder-name">Select a sample folder</h3><p id="folder-description">Subfolders are included.</p></div>
+                    <button type="button" class="button primary" id="choose-folder">choose folder <span aria-hidden="true">↗</span></button>
+                    <input id="folder-input" type="file" webkitdirectory multiple hidden>
+                </div>
+                <p class="folder-note" id="folder-note">WAV, AIFF, FLAC and Ogg Vorbis. You can also drop a folder here.</p>
+                <fieldset class="options" id="options">
+                    <legend class="sr-only">Processing options</legend>
+                    <label class="option"><input type="checkbox" id="use-hints" checked><span><strong>use file &amp; folder hints</strong><small>Names help guide the audio classifier.</small></span></label>
+                    <label class="option"><input type="checkbox" id="split-regions" checked><span><strong>split at long silences</strong><small>Separate hits and breaks from multi-sound files.</small></span></label>
+                    <label class="option"><input type="checkbox" id="find-beats" checked><span><strong>find loop timing</strong><small>Detect beats and prepare the sampler’s loop cuts.</small></span></label>
+                    <label class="option"><input type="checkbox" id="make-kits"><span><strong>make drum hit kits</strong><small>Extract up to eight contrasting hits per drum loop.</small></span></label>
+                </fieldset>
+                <div class="setup-bottom">
+                    <p><span class="status-dot dim" id="folder-status-dot"></span><span id="folder-status">no folder selected</span></p>
+                    <button type="button" class="button quiet" id="open-review" disabled>review prepared samples</button>
+                    <button type="button" class="button primary run-button" id="run" disabled>prepare samples <span aria-hidden="true">→</span></button>
+                </div>
+                <details class="advanced"><summary>more options</summary><label><input type="checkbox" id="force"> reanalyse existing audio <span>— slower; saved manual labels and review marks are retained</span></label><p>The models download when first needed (about 113 MiB for classification, plus 80 MiB for loop timing) and are kept in browser storage where available. Keep this page open while processing.</p></details>
+            </section>
+
+            <div id="notice" class="notice" role="status" hidden></div>
+            <section class="panel processing" id="processing" aria-labelledby="progress-title" hidden>
+                <div class="panel-heading"><h2 id="progress-title"><span class="pulse-dot" id="activity-dot"></span><span id="stage">getting started</span></h2><span class="small-label" id="elapsed">00:00</span></div>
+                <p class="current-file" id="current-file"></p>
+                <div class="progress-track"><div id="progress-fill"></div></div>
+                <progress id="accessible-progress" class="sr-only" max="100" value="0" aria-label="Processing progress"></progress>
+                <div class="progress-labels"><span id="progress-count">scanning folders…</span><span id="progress-percent">—</span></div>
+                <div class="download" id="download" hidden><div><span id="download-name">model download</span><span id="download-size"></span></div><progress id="download-progress" max="100" value="0" aria-label="Model download progress"></progress></div>
+                <div class="processing-bottom"><span id="progress-summary">Completed sounds become available as processing continues.</span><button type="button" class="button quiet" id="pause">pause</button></div>
+            </section>
+
+            <section id="results" class="results" aria-labelledby="results-title" hidden>
+                <div class="section-heading"><div><p class="eyebrow">RESULTS</p><h2 id="results-title">Processing results</h2></div><div class="export-buttons"><button type="button" class="button quiet" id="export-report">save report <span aria-hidden="true">↓</span></button><button type="button" class="button primary" id="export-metadata" hidden>download metadata <span aria-hidden="true">↓</span></button></div></div>
+                <div class="stats" aria-label="Results summary">
+                    <div class="stat"><span class="stat-label">SOUNDS READY</span><strong id="stat-ready">0</strong><span>ready to audition</span></div>
+                    <div class="stat"><span class="stat-label">REUSED</span><strong id="stat-cached">0</strong><span>from saved analysis</span></div>
+                    <div class="stat"><span class="stat-label">SEPARATED</span><strong id="stat-regions">0</strong><span>from multi-sound files</span></div>
+                    <div class="stat"><span class="stat-label">KITS</span><strong id="stat-kits">0</strong><span id="kit-detail">drum hit collections</span></div>
+                    <div class="stat" id="failed-stat"><span class="stat-label">NOT PROCESSED</span><strong id="stat-failed">0</strong><span>see details below</span></div>
+                </div>
+                <section class="panel bank-summary" id="bank-summary" aria-labelledby="bank-summary-title" hidden>
+                    <div class="panel-heading"><h2 id="bank-summary-title">Bank summary</h2></div>
+                    <p id="bank-summary-note"></p>
+                    <div id="bank-groups"></div>
+                </section>
+                <div class="panel library-panel">
+                    <div class="library-toolbar"><div class="filters" id="filters" aria-label="Filter sounds"></div><label class="search"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="m10.5 10.5 4 4"/></svg><input type="search" id="search" placeholder="find a sample…" aria-label="Search samples"></label></div>
+                    <div class="table-wrap"><table><thead><tr><th class="play-cell"><span class="sr-only">Audition</span></th><th>sample</th><th>suggested category</th><th>source</th><th class="duration-cell">length</th><th><span class="sr-only">State</span></th></tr></thead><tbody id="result-rows"></tbody></table></div>
+                    <p class="empty-results" id="empty-results" hidden>No sounds match this filter.</p>
+                    <div class="table-footer"><span id="showing">0 sounds</span><div><button type="button" class="page-button" id="previous-page" aria-label="Previous page">←</button><span id="page-label">1 / 1</span><button type="button" class="page-button" id="next-page" aria-label="Next page">→</button></div></div>
+                </div>
+                <p class="results-note" id="results-note">Categories are suggestions. Open detailed review for issue checkboxes, waveform marks, loop joins and instrument attention flags.</p>
+                <details class="log-panel"><summary>processing details <span id="log-count"></span></summary><ol id="event-log"></ol></details>
+            </section>
+
+        </main>
+        <footer class="site-footer"><a href="../">egc.one</a><a href="./about.html">how it works &amp; credits <span aria-hidden="true">↗</span></a></footer>
+    </div>
+
+    <aside class="audition" id="audition" aria-label="Sample audition" hidden>
+        <div class="audition-inner"><button type="button" class="player-play" id="player-play" aria-label="Play selected sample">▶</button><div class="player-meta"><strong id="player-name"></strong><span id="player-info"></span></div><div class="wave-container"><canvas id="waveform" width="800" height="100" aria-label="Sample waveform; click to seek"></canvas><div class="wave-playhead" id="wave-playhead"></div></div><span class="player-time" id="player-time">0.00 / 0.00</span><label class="loop-switch"><input type="checkbox" id="player-loop"> loop</label><button type="button" class="button quiet edit-button" id="edit-category">edit category</button><button type="button" class="close-player" id="close-player" aria-label="Close audition">×</button></div>
+        <form id="correction" class="correction" hidden><label for="correct-tags">save a manual category</label><select id="correct-tags"></select><button class="button primary" type="submit" id="save-correction">save</button><button type="button" class="button quiet" id="cancel-correction">cancel</button><span id="correction-note">Saved labels take priority on future runs.</span></form>
+    </aside>
+</body>
+</html>

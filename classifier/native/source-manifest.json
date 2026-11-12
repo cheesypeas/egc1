@@ -1,0 +1,13 @@
+{
+  "source": "ToySampler",
+  "commit": "802b986720cdd4f00f66fe57e37352fcfb7346a9",
+  "files": {
+    "SampleAnalysis.cpp": "9bb79928f36e70cd5000db54a3828f556e0427bd30368bbab83e3cd071396b93",
+    "SampleAnalysis.h": "43854fb3abebd2698e4b3d4c23ae79e5e706e3b6bf33384b2609860f64a2ef1f",
+    "BeatAnalysis.h": "2a20b2f7da523361521b996df82831f2b8aa7ff52adcc84316de9b605d9c88a0",
+    "LoopBeatContext.cpp": "69305da33c98d9b9ccc4b1f1267b09867c5846f852f29ed73a63cb0f0f3839e4"
+  },
+  "aubio": "0.4.9",
+  "emscripten": "4.0.10",
+  "note": "Analysis sources copied without changes; browser glue has its own pipeline identity."
+}

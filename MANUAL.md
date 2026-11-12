@@ -2,8 +2,8 @@
 
 The manual is a buildless static page at `manual/index.html`. The home page links
 to `/manual/`; the existing GitHub Pages setup serves it at
-`https://egc.one/manual/` once this branch is integrated and published. Keep the
-existing `CNAME` and hosting setup. Updating this branch does not publish it.
+`https://egc.one/manual/` from `main` at the repository root. Keep the existing
+`CNAME` and hosting setup. A push to `main` triggers the Pages deployment.
 
 Edit the HTML for content, `manual/manual.css` for presentation, and
 `manual/manual.js` for search, bank selection, and print behaviour. All sections
