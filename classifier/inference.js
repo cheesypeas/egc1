@@ -132,7 +132,7 @@ export class Inference {
         return Object.fromEntries(names.map((name, index) => [name,
             all.reduce((sum, row) => sum + row[index], 0) / all.length * .5 + Math.max(...all.map(row => row[index])) * .5]));
     }
-    async analyse(channels, rate, embeddedRoot = null, includeBeats = true) {
+    async analyse(channels, rate, embeddedRoot = null, includeBeats = true, {sequenceOnly = false} = {}) {
         const native = await this.native(), pointers = [];
         let handle = 0;
         try {
@@ -145,6 +145,16 @@ export class Inference {
             this.emit({type: 'stage', stage: 'Finding attacks, pitch and vocal starts'});
             handle = native._toy_analyse(pointers[0], pointers[1] || 0, channels.length, channels[0].length, rate);
             if (!handle) { throw new Error('Playable samples must be mono/stereo, 8–192 kHz and shorter than 60 seconds.'); }
+            if(includeBeats && sequenceOnly) {
+                const preview=JSON.parse(native.UTF8ToString(native._toy_json(handle,embeddedRoot===null ? -1 : embeddedRoot)));
+                const points=preview.loop.transients || [], samples=channels[0].length;
+                // The acoustic classification rules require this original-event
+                // sequence before admitting a loop. Repeating a lone hit for
+                // beat-model context cannot supply that missing evidence.
+                if(samples<rate || points.length<4 || points.at(-1)-points[0]<samples*.45) {
+                    return {...preview,browserBeatPolicy:{version:1,skipped:true,reason:'no-event-sequence'}};
+                }
+            }
             if (includeBeats) {
                 const frames = native._toy_beat_features(handle);
                 if (frames > 0) {

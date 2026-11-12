@@ -98,6 +98,62 @@ test('nested drum hints replace contaminated cached categories without rerunning
     assert.equal(f.pipeline.report.bankSummary.banks[2][0].sounds,0);
 });
 
+test('only loop candidates request beat inference and explicit loops bypass the sequence precheck',async()=>{
+    const f=await fixture(),calls=[];f.options.beats=true;
+    f.files=['kick.wav','unknown.wav','drum_loop.wav','bass.wav'].map((path,i)=>({path,
+        file:new Blob([encodeWav([Float32Array.from({length:16000+i},(_,j)=>.2*Math.sin(j*.31))],8000)])}));
+    const analyse=f.pipeline.inference.analyse;
+    f.pipeline.inference.analyse=async(...args)=>{calls.push({beats:args[3],sequenceOnly:args[4].sequenceOnly});return analyse(...args);};
+    await f.pipeline.run(f);
+    assert.deepEqual(calls,[{beats:false,sequenceOnly:true},{beats:true,sequenceOnly:false},{beats:false,sequenceOnly:true},{beats:true,sequenceOnly:true}],'natural path order: bass, drum_loop, kick, unknown');
+    assert.deepEqual(f.pipeline.report.beatAnalysis,{analysed:2,reused:0,skipped:2});
+});
+
+test('a skipped timing cache is upgraded when the hit is reclassified as a loop',async()=>{
+    const f=await fixture(),calls=[];f.options.beats=true;f.files=f.files.slice(0,1);
+    const analyse=f.pipeline.inference.analyse;
+    f.pipeline.inference.analyse=async(...args)=>{calls.push(args[3]);return analyse(...args);};
+    await f.pipeline.run(f);
+    const row=[...f.pipeline.rows.values()][0];
+    assert.equal((await f.pipeline.folder.json(`.egc1/browser/raw-analysis/${row.id}.json`)).browserBeatPolicy.reason,'assigned-one-shot');
+    const saved=()=>[...new Map([...f.pipeline.folder.files,...f.pipeline.folder.outputs])].map(([path,file])=>({path,file}));
+    await f.pipeline.run({...f,files:saved()});
+    assert.deepEqual(calls,[false]);assert.equal(f.pipeline.report.reusedAnalysis,1);
+    await f.pipeline.folder.writeJson('.egc1/overrides.json',{[row.id]:['loops','drum-loop']});
+    await f.pipeline.run({...f,files:saved()});
+    assert.deepEqual(calls,[false,true],'a loop override obtains actual beat analysis despite the cached hit');
+    assert(!((await f.pipeline.folder.json(`.egc1/browser/raw-analysis/${row.id}.json`)).browserBeatPolicy?.skipped));
+    assert.equal(f.pipeline.report.reusedEmbeddings,1);assert.equal(f.pipeline.report.newEmbeddings,0);
+});
+
+test('short unnamed hits skip beats, while disabling hints retains acoustic sequence checks',async()=>{
+    const f=await fixture(),calls=[];f.options.beats=true;f.options.hints=false;
+    f.files=[f.files[0],{path:'snare.wav',file:new Blob([encodeWav([Float32Array.from({length:16000},(_,j)=>.2*Math.sin(j*.31))],8000)])}];
+    const analyse=f.pipeline.inference.analyse;
+    f.pipeline.inference.analyse=async(...args)=>{calls.push({beats:args[3],sequenceOnly:args[4].sequenceOnly});return analyse(...args);};
+    await f.pipeline.run(f);
+    assert.deepEqual(calls,[{beats:false,sequenceOnly:true},{beats:true,sequenceOnly:true}]);
+});
+
+test('an unnamed sparse-event cache is reused until an explicit loop needs timing',async()=>{
+    const f=await fixture(),calls=[];f.options.beats=true;f.options.hints=false;
+    f.files=[{path:'unknown.wav',file:new Blob([encodeWav([Float32Array.from({length:16000},(_,j)=>.2*Math.sin(j*.31))],8000)])}];
+    const analyse=f.pipeline.inference.analyse;
+    f.pipeline.inference.analyse=async(...args)=>{
+        calls.push(args[4].sequenceOnly);
+        const data=await analyse(...args);
+        return args[4].sequenceOnly ? {...data,browserBeatPolicy:{version:1,skipped:true,reason:'no-event-sequence'}} : data;
+    };
+    await f.pipeline.run(f);const row=[...f.pipeline.rows.values()][0];
+    const saved=()=>[...new Map([...f.pipeline.folder.files,...f.pipeline.folder.outputs])].map(([path,file])=>({path,file}));
+    await f.pipeline.run({...f,files:saved()});
+    assert.deepEqual(calls,[true]);assert.equal(f.pipeline.report.beatAnalysis.skipped,1);
+    await f.pipeline.folder.writeJson('.egc1/overrides.json',{[row.id]:['loops','drum-loop']});
+    await f.pipeline.run({...f,files:saved()});
+    assert.deepEqual(calls,[true,false]);assert.equal(f.pipeline.report.beatAnalysis.analysed,1);
+    assert.equal(f.pipeline.report.reusedEmbeddings,1);
+});
+
 test('pause after a result saves the completed source and leaves the remainder resumable', async () => {
     let pipeline;
     const f = await fixture(event => { if (event.type === 'result') { pipeline.pause = true; } });

@@ -66,7 +66,8 @@ export class Pipeline {
             this.policy = {...policy, frontend: FRONTEND, nameHints: options.hints, manualTags: true, browserRuntime: 'onnxruntime-web-1.22.0'};
             this.report = {version: 1, started: new Date().toISOString(), pipeline: this.pipeline, policy: this.policy, options: {...options},
                 sourceFiles: sources.length, completedFiles: 0, readySamples: 0, reusedAnalysis: 0,
-                newEmbeddings: 0, reusedEmbeddings: 0, separatedRegions: 0, kits: 0, hits: 0, pendingReview: 0, failures: [], predictions: {}};
+                newEmbeddings: 0, reusedEmbeddings: 0, separatedRegions: 0, kits: 0, hits: 0, pendingReview: 0, failures: [], predictions: {},
+                beatAnalysis:{analysed:0,reused:0,skipped:0}};
             const paths = new Set(sources.map(source => source.path));
             this.rows = new Map((previous?.entries || []).filter(row => paths.has(sourceOf(row))).map(row => [row.path, structuredClone(row)]));
             for (const row of this.rows.values()) {
@@ -280,6 +281,12 @@ export class Pipeline {
     provenance(id, path, info, start, end) { return {kind: 'separated', sourceId: id, sourcePath: path, sourceSamples: info.frames, rate: info.rate, start, end}; }
     async prepare(item, kind) {
         const {id, info, file} = item;
+        const hints = this.options.hints && kind !== 'hit' ? nameHints(sourceOf(item)) : [];
+        const manual = this.overrides[id];
+        const timingTags = (manual || hints).filter(tag=>tag!=='recorded');
+        const namedLoop = timingTags.includes('loops');
+        const includeBeats = Boolean(this.options.beats && kind!=='hit' && (namedLoop || (!timingTags.length && info.frames>=info.rate)));
+        const sequenceOnly = !namedLoop;
         const previous = this.previousRows.get(item.path);
         const protectApproved = previous?.admission && previous.state === 'ready' && previous.output?.id === id;
         const rawCache = await this.folder.json(`.egc1/browser/raw-analysis/${id}.json`);
@@ -287,7 +294,11 @@ export class Pipeline {
         let data = rawCache || await this.folder.json(`.egc1/entries/${id}.json`);
         let embedding = await this.folder.json(`.egc1/browser/embeddings/${id}.json`);
         const assets = await this.inference.assetsPromise;
-        const analysisCached = !this.options.force && validAnalysis(data, id, this.pipeline, info);
+        // A partial cache is reusable for the same one-shot decision. If its
+        // name/override later makes it a loop, obtain actual beat predictions.
+        const missingRequiredBeats = includeBeats && data?.browserBeatPolicy?.skipped &&
+            (!sequenceOnly || data.browserBeatPolicy.reason!=='no-event-sequence');
+        const analysisCached = !this.options.force && !missingRequiredBeats && validAnalysis(data, id, this.pipeline, info);
         const embeddingCached = !this.options.force && validEmbedding(embedding, id, info, FRONTEND, assets.models.audio.sha256);
         // Acceptance checks inspect the audible signal even when model results
         // are cached; model confidence alone is not a publication decision.
@@ -300,9 +311,16 @@ export class Pipeline {
             }
         }
         else {
-            data = await this.inference.analyse(item.channels, info.rate, info.root, this.options.beats && kind !== 'hit');
+            data = await this.inference.analyse(item.channels, info.rate, info.root, includeBeats, {sequenceOnly});
+            if(this.options.beats && !includeBeats) {
+                data.browserBeatPolicy={version:1,skipped:true,reason:kind==='hit' ? 'extracted-hit' : timingTags.length ? 'assigned-one-shot' : 'short-one-shot'};
+            }
             data = {...data, id, pipeline: this.pipeline, kitCandidatesVersion: 0};
             if (!protectApproved) { await this.folder.writeJson(`.egc1/entries/${id}.json`, data); }
+        }
+        if(this.options.beats && kind!=='hit' && this.report.beatAnalysis) {
+            const counter=data.browserBeatPolicy?.skipped ? 'skipped' : analysisCached ? 'reused' : 'analysed';
+            this.report.beatAnalysis[counter]++;
         }
         if (!rawCache || rawPipeline !== this.pipeline || !analysisCached) { await this.folder.writeJson(`.egc1/browser/raw-analysis/${id}.json`,data); }
         if (embeddingCached) {
@@ -323,10 +341,8 @@ export class Pipeline {
         const semantic = {version: 1, id, rate: info.rate, samples: info.frames, analysisPipeline: this.pipeline,
             policy: {...this.policy, nameHints: false}, tags: raw.tags, reason: raw.reason, scores, roleEvidence: evidence, needsReview: true};
         await this.folder.writeJson(`.egc1/semantic/${id}.json`, semantic);
-        const hints = this.options.hints && kind !== 'hit' ? nameHints(sourceOf(item)) : [];
         const substantiveHints = hints.filter(tag => tag !== 'recorded');
         const assigned = substantiveHints.length ? applyHints(raw.tags, hints) : [...raw.tags, ...hints];
-        const manual = this.overrides[id];
         const recordedId = item.provenance?.sourceId || id;
         const recorded = await this.folder.json(`.egc1/recordings/${recordedId}.json`);
         const tags = [...new Set(manual || assigned)];

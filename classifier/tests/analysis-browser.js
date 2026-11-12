@@ -40,6 +40,19 @@ export async function checkAnalysis() {
     const pitch = await inference.analyse([tone, other], rate, null, false);
     check(pitch.pitch.hasRoot && Math.abs(pitch.pitch.root - 69) < .1, 'Louder right channel must not replace left pitch');
 
+    const before=captured.length;
+    const sparse=await inference.analyse([tone],rate,null,true,{sequenceOnly:true});
+    check(captured.length===before && sparse.browserBeatPolicy?.reason==='no-event-sequence', 'An unnamed sustained note must not run the beat frontend/model');
+    const sequence=await inference.analyse([left],rate,null,true,{sequenceOnly:true});
+    check(captured.length===before+1 && !sequence.browserBeatPolicy?.skipped, 'Original event sequences retain full beat analysis');
+    check(same(sequence.loop,mono.loop), 'Selective timing must preserve the full loop analysis');
+    const native=await inference.native(),frontend=native._toy_beat_features;
+    let frontendCalls=0;
+    native._toy_beat_features=(...args)=>{frontendCalls++;return frontend(...args);};
+    const explicit=await inference.analyse([tone],rate,null,true);
+    native._toy_beat_features=frontend;
+    check(frontendCalls===1 && !explicit.browserBeatPolicy?.skipped, 'An explicit loop retains the full timing frontend even without four detected attacks');
+
     const id = 'a'.repeat(64), info = {channels: 2, rate, frames: rate};
     const data = {...stereo, id, pipeline: PIPELINE};
     check(validAnalysis(data, id, PIPELINE, info), 'Fresh analysis must be reusable');
@@ -49,5 +62,5 @@ export async function checkAnalysis() {
         stale[role].analysisVersion = version;
         check(!validAnalysis(stale, id, PIPELINE, info), `Old ${role} markers must be refreshed`);
     }
-    return 'PASS: real WASM left-channel pitch/cuts/beats, zero boundaries, shared gates and cache migration';
+    return 'PASS: real WASM left-channel pitch/cuts/beats, selective loop timing, zero boundaries, shared gates and cache migration';
 }

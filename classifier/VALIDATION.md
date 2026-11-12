@@ -351,3 +351,32 @@ Regression tests cover nested pack names, nearest plural directories, Windows
 paths, inherited recorded modifiers, resolved role alternatives, and cached
 repair of stale assignments with accurate bank totals. All seven JavaScript
 suites pass.
+
+## Selective beat inference — 2026-11-12
+
+The paused 37-source EgcSamples report records 291.7 seconds elapsed, including
+134.0 seconds under finding loop beats and 119.9 under classification. Metadata
+writes total 3.8 seconds and overlap those stages. The older complete Future
+Music run records 2738.4 seconds elapsed and 2040.4 under loop beats. These
+stage measurements include subsequent bookkeeping until the next stage begins;
+they are evidence of the dominant cost, not pure model benchmarks.
+
+The pipeline skips beat inference for explicit non-loop assignments and unnamed
+sounds shorter than one second. Otherwise, unnamed sounds use the existing
+loop-classification prerequisite (at least four original attacks spanning 45%
+of the source) before generating repeated beat-model context. Explicit loop
+hints/overrides bypass this precheck. Pitch, attacks, acoustic classification,
+playable-bound validation and manual approval still run as before.
+
+Saved skip reasons distinguish assigned one-shots from sounds without an event
+sequence. A later loop assignment upgrades that partial cache while reusing
+its CLAP embedding. Complete old analyses retain their identity and remain
+reusable. Reports count newly analysed, reused and skipped timing work.
+
+Pipeline regressions cover named one-shots, unnamed short/long sounds, disabled
+hints, explicit short loops, cached skips and later loop overrides. The real
+WASM Chrome check confirms sparse sounds skip the timing frontend, original
+event sequences retain the identical full loop analysis, and explicit loops
+still reach the timing frontend. All JavaScript suites pass. These checks do
+not establish a whole-folder wall-time speedup; that depends on its candidate
+mix and existing cache.

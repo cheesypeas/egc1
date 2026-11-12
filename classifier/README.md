@@ -50,6 +50,13 @@ subsequent bookkeeping until the next stage begins; write time overlaps those
 stages. The report's own final write is excluded. The mono core reduces native
 analysis work; CLAP and Beat This! already infer on one channel. Long samples
 use up to three CLAP crops, and beat tracking repeats the source for context.
+Beat tracking now runs selectively: clearly assigned one-shots and short unnamed
+hits skip it. Other unnamed sounds first need the original event sequence used
+by the loop classification rules. Explicitly labelled loops retain the full
+timing path, even when attack detection is sparse. Skipped timing is recorded;
+changing a sound to a loop obtains the missing analysis while reusing its
+classification embedding. The report's `beatAnalysis` counts new, reused and
+skipped timing work. Existing complete analyses remain reusable.
 
 Classification, silence splitting and loop timing are enabled by default.
 Hints use the filename first, then the nearest informative folder. Broader pack
