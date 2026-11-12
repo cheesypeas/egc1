@@ -261,3 +261,30 @@ and drafts. Desktop/mobile layouts and shared/native review regressions pass.
 Collection counts read saved catalogues and audio presence without rerunning
 models or rehashing whole packs. They are a catalogue inventory, not a new audio
 quality benchmark. Pack metadata/review histories remain independent.
+
+## Similar loop consolidation (2026-11-12)
+
+Publication compares left-channel waveforms at 2 kHz and energy envelopes in
+three frequency bands. It requires waveform correlation >= 0.995, agreement
+within each of eight sections, and band-envelope correlation >= 0.98. Duration
+must agree within 0.5%, or every repetition of an integer-length alternative
+(up to eight repetitions) must match. Alignment searches cover +/-8 ms.
+Groups compare directly against their retained representative to avoid
+transitive chains collapsing distinct material. These thresholds are similarity
+criteria, not probabilities or a guarantee of musical interchangeability.
+
+Seven targeted tests cover gain/offset edits, changed rhythms and fills,
+repeated phrases, deterministic publication, manual representative changes,
+promotion after rejection, sibling packs, category boundaries, favourites and
+instrument attention. Existing primitive, pipeline, preparation, review,
+admission and inventory suites pass. Real Chrome checks cover the new control,
+excluded-member explanation, combined sibling totals, and collection-relative
+metadata ZIP contents; the existing curation/browser workflow also passes.
+
+A read-only comparison of the 93 whole-file drum-loop entries from the previous
+Sam Samples manifest excluded ten very similar alternatives in eight groups,
+retaining 83. These counts describe that subset of the old run, not a new
+validation of its loop classifications or the 117 generated fragments. No user
+audio or live instrument metadata was changed for this check. Initial comparison
+took approximately 11 seconds on the development machine; fingerprints and pair
+results are cached for subsequent publications.

@@ -14,7 +14,7 @@ let total = 0, done = 0, within = 0, started = 0, stoppedAt = 0, timer = null, a
 let context = null, source = null, buffer = null, playStarted = 0, playOffset = 0, playEnd = 0, playing = false, animation = null;
 let renderQueued = false, previewSequence = 0;
 const PAGE_SIZE = 30;
-const filterNames = ['All', 'Manual review', 'Drums', 'Loops', 'Synth', 'Voice', 'FX', 'Uncertain', 'Attention', 'Failed'];
+const filterNames = ['All', 'Manual review', 'Similar loops', 'Drums', 'Loops', 'Synth', 'Voice', 'FX', 'Uncertain', 'Attention', 'Failed'];
 const sourceKind = row => row.browserKind === 'hit' ? 'Kit hit' : row.provenance?.kind === 'separated' ? 'Separated region' : 'Whole file';
 const manualCategories = [
     ['Drums · unspecified hit', ['drums']], ['Drums · kick', ['drums', 'kick']], ['Drums · snare', ['drums', 'snare']],
@@ -228,13 +228,14 @@ function matches(row, filter) {
     if (filter === 'All') { return true; }
     if (filter === 'Failed') { return row.state === 'failed'; }
     if (filter === 'Manual review') { return row.state === 'needs-review' || row.state === 'rejected'; }
+    if (filter === 'Similar loops') { return Boolean(row.duplicateOf); }
     if (filter === 'Attention') { return Boolean(row.feedback?.needsAttention); }
     if (filter === 'Uncertain') { return row.state === 'ready' && isUncertain(row); }
-    return row.state === 'ready' && destination(row.tags) === filter;
+    return row.state === 'ready' && !row.duplicateOf && destination(row.tags) === filter;
 }
 function render() {
     renderBankSummary();
-    const all = [...rows.values()], ready = all.filter(row => row.state === 'ready');
+    const all = [...rows.values()], ready = all.filter(row => row.state === 'ready' && !row.duplicateOf);
     $('#stat-ready').textContent = number(ready.length);
     $('#stat-cached').textContent = number(ready.filter(row => row.cached).length);
     $('#stat-regions').textContent = number(ready.filter(row => row.provenance?.kind === 'separated').length);
@@ -282,7 +283,8 @@ function render() {
         if (row.kitHits) { origin.textContent += ` · ${row.kitHits}-hit kit`; }
         const duration = document.createElement('td'); duration.className = 'duration-cell'; duration.textContent = row.samples && row.rate ? `${(row.samples / row.rate).toFixed(2)}s` : '—';
         const status = document.createElement('td'); status.className = 'row-state';
-        if (row.feedback?.needsAttention) { status.textContent = '!'; status.title = 'Marked for attention on the instrument'; status.classList.add('attention'); }
+        if (row.duplicateOf) { status.textContent = '≈'; status.title = 'Similar loop excluded; kept '+row.duplicateOf.path; }
+        else if (row.feedback?.needsAttention) { status.textContent = '!'; status.title = 'Marked for attention on the instrument'; status.classList.add('attention'); }
         else if (row.feedback?.favourite) { status.textContent = '★'; status.title = 'Favourite on the instrument'; status.classList.add('favourite'); }
         else if (row.cached) { status.textContent = '↻'; status.title = 'Reused saved analysis'; }
         tr.append(play, name, category, origin, duration, status);
@@ -298,7 +300,7 @@ function renderBankSummary() {
     const summary = report?.bankSummary, panel = $('#bank-summary');
     panel.hidden = running || paused || !summary;
     if (panel.hidden) { return; }
-    $('#bank-summary-note').textContent = `${number(summary.uniqueSamples)} accepted samples. ${number([...rows.values()].filter(row => row.state === 'needs-review' || row.state === 'rejected').length)} excluded for manual review. Sounds can appear in several banks. ${number(summary.unassigned)} accepted samples have no bank assignment.`;
+    $('#bank-summary-note').textContent = `${number(summary.uniqueSamples)} accepted samples. ${number([...rows.values()].filter(row=>row.duplicateOf).length)} similar loops excluded; one representative kept per group. ${number([...rows.values()].filter(row => row.state === 'needs-review' || row.state === 'rejected').length)} excluded for manual review. Sounds can appear in several banks. ${number(summary.unassigned)} accepted samples have no bank assignment.`;
     const groups = $('#bank-groups'); groups.replaceChildren();
     for (const [mode, banks] of summary.banks.entries()) {
         const group = document.createElement('div'), heading = document.createElement('h3'), list = document.createElement('ul');

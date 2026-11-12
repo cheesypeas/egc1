@@ -423,13 +423,18 @@ export class Pipeline {
     }
     async publish() {
         this.manifest.entries = [...this.rows.values()];
-        await publishWorkspace(this.folder, this.manifest);
+        if(this.manifest.entries.some(row=>row.state==='ready' && row.tags?.includes('loops'))) { this.stage('Comparing similar loops'); }
+        await publishWorkspace(this.folder, this.manifest, {progress:stage=>this.emit({type:'stage',stage})});
+        if(this.report) {
+            this.report.readySamples=this.manifest.entries.filter(row=>row.state==='ready' && !row.duplicateOf).length;
+            this.report.loopSimilarity=this.manifest.loopSimilarity;
+        }
     }
     async summariseBanks() {
         const kits = new Map();
         if (this.banks.banks.flat().some(bank => bank.kind === 'kits')) {
             for (let row of this.rows.values()) {
-                if (row.state !== 'ready' || kits.has(row.id)) { continue; }
+                if (row.state !== 'ready' || row.duplicateOf || kits.has(row.id)) { continue; }
                 row = row.output || row;
                 try {
                     const kit = await this.folder.json(`.egc1/kits/${row.id}/kit.json`);
@@ -454,7 +459,7 @@ export class Pipeline {
                 }
             }
         }
-        return bankSummary(this.banks, [...this.rows.values()].filter(row => row.state === 'ready').map(row => row.output || row), kits);
+        return bankSummary(this.banks, [...this.rows.values()].filter(row => row.state === 'ready' && !row.duplicateOf).map(row => row.output || row), kits);
     }
     async correct(id, tags) {
         if (this.running || !this.folder) { throw new Error('Pause processing before changing a classification.'); }

@@ -64,5 +64,5 @@ export async function readCatalogue(folder) {
         }
     }
     const candidates = state => workspace.entries.filter(row => row.state === state).map(row => ({id:row.reviewId || row.id,tags:row.tags || [],kind:row.browserKind === 'hit' ? 'hit' : 'sample'}));
-    return {ready,pending:candidates('needs-review'),excluded:candidates('rejected'),unavailable,processing:manifest.state === 'processing'};
+    return {ready,pending:candidates('needs-review'),excluded:[...candidates('rejected'),...workspace.entries.filter(row=>row.duplicateOf && row.state==='ready').map(row=>({id:row.reviewId || row.id,tags:row.tags || [],kind:'sample'}))],unavailable,processing:manifest.state === 'processing'};
 }

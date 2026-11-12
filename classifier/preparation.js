@@ -1,4 +1,4 @@
-import {encodeWav, hashBytes, hashFile} from './audio.js';
+import {encodeWav, hashBytes, hashFile, audioInfo, readWav} from './audio.js';
 
 export const PREPARATION = 'playable-phrase-and-attack-validation-v1';
 export async function reviewIdentity(row) {
@@ -225,9 +225,178 @@ export async function readWorkspace(folder) {
     return saved || await folder.json('.egc1/library.json');
 }
 
-export async function publishWorkspace(folder, workspace) {
+
+export const LOOP_SIMILARITY = 'left-waveform-and-three-band-envelope-v1';
+const similarityCaches = new WeakMap();
+const encoded = array => {
+    const bytes = new Uint8Array(array.buffer), parts = [];
+    for (let i=0;i<bytes.length;i+=8192) { parts.push(String.fromCharCode(...bytes.subarray(i,i+8192))); }
+    return btoa(parts.join(''));
+};
+const decoded = (text, Type) => {
+    const bytes = Uint8Array.from(atob(text), ch=>ch.charCodeAt(0));
+    return new Type(bytes.buffer);
+};
+
+// Preserve timing and timbre evidence. Semantic embeddings alone would merge
+// different grooves played on the same kit, and raw file hashes miss gain edits.
+export function loopFingerprint(audio, rate) {
+    const frequency=2000, envelopeRate=100, count=Math.ceil(audio.length*frequency/rate);
+    const wave=new Float64Array(count), powers=Array.from({length:3},()=>new Float64Array(Math.ceil(audio.length*envelopeRate/rate)));
+    const widths=new Uint32Array(count), envelopes=new Uint32Array(powers[0].length);
+    const a=1-Math.exp(-2*Math.PI*200/rate), b=1-Math.exp(-2*Math.PI*2000/rate);
+    let low=0, mid=0;
+    for(let i=0;i<audio.length;i++) {
+        const value=audio[i];
+        if(!Number.isFinite(value)) { throw Error('Non-finite loop audio'); }
+        const w=Math.floor(i*frequency/rate), e=Math.floor(i*envelopeRate/rate);
+        wave[w]+=value;widths[w]++;envelopes[e]++;
+        low+=a*(value-low);mid+=b*(value-mid);
+        powers[0][e]+=low*low;powers[1][e]+=(mid-low)**2;powers[2][e]+=(value-mid)**2;
+    }
+    let maximum=0;
+    for(let i=0;i<count;i++) { wave[i]/=widths[i];maximum=Math.max(maximum,Math.abs(wave[i])); }
+    const quantised=Int16Array.from(wave,value=>Math.round(value/Math.max(maximum,1e-12)*32767));
+    let energyMaximum=0;
+    for(const band of powers) { for(let i=0;i<band.length;i++) { band[i]=Math.sqrt(band[i]/envelopes[i]);energyMaximum=Math.max(energyMaximum,band[i]); } }
+    return {method:LOOP_SIMILARITY,seconds:audio.length/rate,wave:encoded(quantised),
+        bands:powers.map(band=>encoded(Uint16Array.from(band,value=>Math.round(value/Math.max(energyMaximum,1e-12)*65535))))};
+}
+
+function correlation(a,b,lag=0,stride=1,start=0,end=a.length) {
+    let aa=0,bb=0,ab=0;
+    for(let i=Math.max(start,-lag);i<Math.min(end,b.length-lag);i+=stride) {
+        const x=a[i],y=b[i+lag];aa+=x*x;bb+=y*y;ab+=x*y;
+    }
+    return {score:ab/Math.max(1e-12,Math.sqrt(aa*bb)),power:Math.max(aa,bb)};
+}
+const unpackFingerprint = value => ({...value,wave:decoded(value.wave,Int16Array),bands:value.bands.map(band=>decoded(band,Uint16Array))});
+export function compareLoops(left,right) {
+    if(left.method!==LOOP_SIMILARITY || right.method!==LOOP_SIMILARITY) { return null; }
+    const a=typeof left.wave==='string' ? unpackFingerprint(left) : left;
+    const b=typeof right.wave==='string' ? unpackFingerprint(right) : right;
+    if(Math.abs(a.seconds-b.seconds)>Math.min(a.seconds,b.seconds)*.005) {
+        const short=a.seconds<b.seconds ? a : b, long=short===a ? b : a;
+        const repeats=Math.round(long.seconds/short.seconds);
+        if(repeats<2 || repeats>8 || Math.abs(long.seconds/repeats-short.seconds)>short.seconds*.005) { return null; }
+        let weakest=1,offset=null;
+        for(let repeat=0;repeat<repeats;repeat++) {
+            const slice=values=>values.subarray(Math.round(repeat*values.length/repeats),Math.round((repeat+1)*values.length/repeats));
+            const comparison=compareLoops(short,{method:LOOP_SIMILARITY,seconds:long.seconds/repeats,wave:slice(long.wave),bands:long.bands.map(slice)});
+            if(!comparison || (offset!==null && Math.abs(comparison.offsetMs-offset)>2)) { return null; }
+            weakest=Math.min(weakest,comparison.correlation);offset=comparison.offsetMs;
+        }
+        return {correlation:weakest,offsetMs:offset,repeats};
+    }
+    const candidates=[];
+    for(let lag=-16;lag<=16;lag++) { candidates.push({lag,score:correlation(a.wave,b.wave,lag,16).score}); }
+    candidates.sort((x,y)=>y.score-x.score);
+    for(const {lag} of candidates.slice(0,3)) {
+        const whole=correlation(a.wave,b.wave,lag);
+        if(whole.score<.995) { continue; }
+        // A unique fill must not disappear under an otherwise identical loud
+        // kick pattern. Every audible section and frequency band must agree.
+        let matches=true;
+        for(let part=0;part<8;part++) {
+            const local=correlation(a.wave,b.wave,lag,1,Math.floor(part*a.wave.length/8),Math.floor((part+1)*a.wave.length/8));
+            if(local.power>whole.power*.00001 && local.score<.98) { matches=false;break; }
+        }
+        if(!matches) { continue; }
+        for(let band=0;band<3;band++) {
+            const energy=correlation(a.bands[band],b.bands[band],Math.round(lag/20));
+            if(energy.power>0 && energy.score<.98) { matches=false;break; }
+        }
+        if(matches) { return {correlation:whole.score,offsetMs:lag/2}; }
+    }
+    return null;
+}
+
+async function fingerprintFor(folder,row) {
+    let cache=similarityCaches.get(folder);
+    if(!cache) { cache={fingerprints:new Map(),pairs:new Map()};similarityCaches.set(folder,cache); }
+    const output=row.output || row;
+    if(!cache.fingerprints.has(output.id)) {
+        const pending=(async()=>{
+            const path=`.egc1/browser/loop-fingerprints/${output.id}.json`;
+            let value=await folder.json(path);
+            if(value?.method!==LOOP_SIMILARITY || value.id!==output.id || value.seconds!==output.samples/output.rate || typeof value.wave!=='string' || !Array.isArray(value.bands) || value.bands.length!==3 || value.bands.some(band=>typeof band!=='string') ||
+                value.wave.length!==4*Math.ceil(Math.ceil(output.samples*2000/output.rate)*2/3)) {
+                const file=await folder.file(output.path);
+                if(!file) { throw Error('Loop audio is missing: '+output.path); }
+                const info=await audioInfo(file);
+                if(info.compressed) { return null; }
+                const channels=await readWav(file,info);
+                value={...loopFingerprint(channels[0],info.rate),id:output.id};
+                await folder.writeJson(path,value);
+            }
+            return unpackFingerprint(value);
+        })();
+        cache.fingerprints.set(output.id,pending);
+    }
+    return cache.fingerprints.get(output.id);
+}
+
+// Compare each candidate against a retained representative, never against a
+// discarded neighbour: A~B and B~C do not establish that A and C are duplicates.
+export async function selectLoopRepresentatives(sources, progress=()=>{}) {
+    const candidates=[];
+    for(const source of sources) {
+        const feedback=await source.folder.json('.egc1/instrument-feedback.json');
+        const resolutions=(await source.folder.json('.egc1/instrument-resolutions.json'))?.resolutions || {};
+        for(const row of source.workspace.entries) {
+            delete row.duplicateOf;
+            if(row.output) { delete row.output.duplicateOf; }
+            if(row.state!=='ready' || !row.tags?.includes('loops')) { continue; }
+            const aliases=new Set([await reviewIdentity(row)]);
+            if(row.output) { aliases.add(await reviewIdentity({...row.output,reviewId:null})); }
+            let favourite=false,attention=false;
+            for(const [id,flag] of Object.entries(feedback?.items || {})) {
+                if(!aliases.has(id) && !flag.members?.some(member=>aliases.has(member))) { continue; }
+                favourite ||= Boolean(flag.favourite);
+                const token=flag.attentionToken || `${id}:${flag.revision || 0}`;
+                attention ||= Boolean(flag.needsAttention && resolutions[token]?.id!==id);
+            }
+            if(attention) {
+                row.state='needs-review';
+                row.preparation={...row.preparation,reasons:[...new Set([...(row.preparation?.reasons || []),'instrument-attention'])]};
+                continue;
+            }
+            candidates.push({...source,row,favourite});
+        }
+    }
+    const identity=item=>`${item.pack || ''}/${item.row.path}`;
+    candidates.sort((a,b)=>Number(Boolean(b.row.admission))-Number(Boolean(a.row.admission)) ||
+        String(b.row.admission?.decidedAt || '').localeCompare(a.row.admission?.decidedAt || '') ||
+        Number(b.favourite)-Number(a.favourite) || identity(a).localeCompare(identity(b)));
+    const representatives=[];
+    let excluded=0,checked=0;
+    for(const item of candidates) {
+        progress(`Comparing similar loops · ${++checked} / ${candidates.length}`);
+        const output=item.row.output || item.row, family=(item.row.tags || []).filter(tag=>['drum-loop','melodic-loop','vocal-loop','recorded'].includes(tag)).sort().join('/');
+        const fingerprint=await fingerprintFor(item.folder,item.row);
+        let match=null, evidence=null;
+        if(fingerprint) {
+            for(const candidate of representatives) {
+                if(candidate.family!==family || !candidate.fingerprint) { continue; }
+                const cache=similarityCaches.get(item.folder), key=output.id+':'+candidate.output.id;
+                if(!cache.pairs.has(key)) { cache.pairs.set(key,compareLoops(fingerprint,candidate.fingerprint)); }
+                const comparison=cache.pairs.get(key);
+                if(comparison) { match=candidate;evidence=comparison;break; }
+            }
+        }
+        if(match) {
+            item.row.duplicateOf={method:LOOP_SIMILARITY,id:match.output.id,reviewId:await reviewIdentity(match.item.row),
+                path:match.item.row.provenance?.sourcePath || match.item.row.path,pack:match.item.pack || '',...evidence};
+            excluded++;
+        } else { representatives.push({item,output,fingerprint,family}); }
+    }
+    return {method:LOOP_SIMILARITY,checked:candidates.length,retained:representatives.length,excluded};
+}
+
+export async function publishWorkspace(folder, workspace, {grouped=false,progress=()=>{}} = {}) {
+    if (!grouped) { workspace.loopSimilarity=await selectLoopRepresentatives([{folder,workspace}],progress); }
     workspace.publicationPolicy = PREPARATION;
-    const entries = workspace.entries.filter(row => row.state === 'ready').map(row => row.output || row);
+    const entries = workspace.entries.filter(row => row.state === 'ready' && !row.duplicateOf).map(row => row.output || row);
     const previous = await folder.json('.egc1/library.json');
     const allowed = new Set(entries.map(row => row.id));
     // Withdraw first. A failed subsequent write can withhold a sound but cannot

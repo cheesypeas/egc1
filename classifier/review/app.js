@@ -49,7 +49,7 @@ function itemFolder(item) {
 }
 
 function itemReasons(item) {
-  return [...new Set([...(item.preparation?.reasons || []), ...(item.review?.reasons || []),
+  return [...new Set([...(item.duplicateOf ? ["similar-loop"] : []), ...(item.preparation?.reasons || []), ...(item.review?.reasons || []),
     ...(item.instrument?.needsAttention ? ["instrument-attention"] : [])])];
 }
 
@@ -69,7 +69,7 @@ function queueItems() {
     if (!terms.every(term => text.includes(term))) { return false; }
     if (state.filter === "pending") { return item.publication === "needs-review"; }
     if (state.filter === "accepted") { return item.publication === "ready"; }
-    if (state.filter === "excluded") { return item.publication === "rejected"; }
+    if (state.filter === "excluded") { return ["rejected","duplicate"].includes(item.publication); }
     if (state.filter === "instrument") { return item.instrument?.needsAttention; }
     if (state.filter === "favourites") { return item.instrument?.favourite; }
     if (state.filter === "unreviewed") { return !item.review; }
@@ -178,7 +178,7 @@ function renderQueue() {
     text.className = "queue-description";
     const name = document.createElement("strong"), detail = document.createElement("small"), location = document.createElement("small");
     name.textContent = itemLabel(item);
-    detail.textContent = [...itemTags(item).map(title), item.publication === "needs-review" ? "Needs review" : item.publication === "rejected" ? "Excluded" : item.publication === "ready" ? "Included" : ""].filter(Boolean).join(" · ");
+    detail.textContent = [...itemTags(item).map(title), item.publication === "needs-review" ? "Needs review" : item.publication === "duplicate" ? "Similar loop excluded" : item.publication === "rejected" ? "Excluded" : item.publication === "ready" ? "Included" : ""].filter(Boolean).join(" · ");
     location.textContent = itemFolder(item) || "Top level";
     text.append(name,detail,location);
     button.title = `${item.sourcePath || item.filename || ""}\n${itemReasons(item).join(", ")}`;

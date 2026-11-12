@@ -1,3 +1,4 @@
+import {readWorkspace,publishWorkspace,selectLoopRepresentatives} from '../preparation.js';
 import {Folder,AUDIO_EXTENSION} from '../storage.js';
 import {readCatalogue,summariseInventory} from './inventory.js';
 
@@ -9,6 +10,8 @@ export class Collection {
     async attach(root, current) {
         this.packs.clear();
         this.root=root;
+        const saved=await new Folder(root.handle,root.files || []).json('.egc1/collection.json') || await this.cache.get('collection-snapshot');
+        this.similarityEnabled=Boolean(saved?.name===root.name && saved.loopSimilarityEnabled);
         await this.refresh(current);
         if (root.handle) { await this.cache.set('collection-parent',{handle:root.handle,name:root.name}); }
     }
@@ -90,9 +93,56 @@ export class Collection {
     }
     snapshot() {
         return {version:1,type:'sample-collection',name:this.root?.name || '',updatedAt:this.updatedAt,
-            currentPath:this.currentPath,catalogues:this.catalogues.map(({path,name,inventory,error})=>({path,name,inventory,error})),unprepared:this.unprepared};
+            currentPath:this.currentPath,loopSimilarityEnabled:Boolean(this.similarityEnabled),catalogues:this.catalogues.map(({path,name,inventory,error})=>({path,name,inventory,error})),unprepared:this.unprepared};
     }
     summary() { return summariseInventory(this.catalogues.filter(row=>row.inventory).map(row=>row.inventory),this.taxonomy); }
+    async consolidate(current) {
+        const execute=async()=>{
+            if(current?.folder && this.currentPath!==null) { this.packs.set(this.currentPath,current); }
+            const sources=[];
+            for(const pack of this.catalogues) {
+                if(pack.error) { throw Error('Resolve unreadable collection folders before comparing loops'); }
+                const saved=this.packs.get(pack.path);
+                const folder=saved?.folder || new Folder(pack.handle,pack.files || []);
+                await folder.initialise({locked:true});
+                const workspace=await readWorkspace(folder);
+                if(!workspace?.entries) { continue; }
+                sources.push({folder,workspace,pack:pack.path});
+                this.packs.set(pack.path,{...pack,folder,outputs:[...folder.outputs],collectionPath:pack.path});
+            }
+            const summary=await selectLoopRepresentatives(sources,this.progress);
+            // Withdraw every discarded choice before publishing any promoted
+            // representative in a sibling pack. Interrupted saves can withhold
+            // extra sounds, but cannot publish both versions during a swap.
+            for(const source of sources) {
+                const manifest=await source.folder.json('.egc1/library.json');
+                const allowed=new Set(source.workspace.entries.filter(row=>row.state==='ready' && !row.duplicateOf).map(row=>(row.output || row).id));
+                if(manifest?.entries.some(row=>!allowed.has(row.id))) {
+                    await source.folder.writeJson('.egc1/library.json',{...manifest,entries:manifest.entries.filter(row=>allowed.has(row.id))});
+                }
+            }
+            for(const source of sources) {
+                const loops=source.workspace.entries.filter(row=>row.state==='ready' && row.tags?.includes('loops'));
+                source.workspace.loopSimilarity={method:summary.method,scope:'collection',pack:source.pack,
+                    checked:loops.length,retained:loops.filter(row=>!row.duplicateOf).length,excluded:loops.filter(row=>row.duplicateOf).length};
+                await publishWorkspace(source.folder,source.workspace,{grouped:true});
+            }
+            this.similarityEnabled=true;
+            await this.refresh(current);
+            return summary;
+        };
+        return globalThis.navigator?.locks ? navigator.locks.request('egc-classifier-write',{ifAvailable:true},lock=>{
+            if(!lock) { throw Error('Pause sample processing in other tabs before comparing loops'); }
+            return execute();
+        }) : execute();
+    }
+    metadataOutputs() {
+        const outputs=new Map();
+        for(const [path,pack] of this.packs) {
+            for(const [file,blob] of pack.folder?.outputs || []) { outputs.set((path ? path+'/' : '')+file,blob); }
+        }
+        return outputs;
+    }
     async open(path) {
         const row=this.catalogues.find(row=>row.path===path);
         if(!row || row.error) { throw Error('This folder has no readable prepared library'); }

@@ -85,8 +85,8 @@ export class ReviewLibrary {
             sourceFrames, sourceDuration: sourceFrames / row.rate, duration: row.samples / row.rate, root:analysis.pitch.hasRoot ? analysis.pitch.root : null,
             transients: (analysis.loop.transients || []).map(frame => frame + start), currentTags: row.tags || [], prediction: useSemantic ? semantic.tags : row.tags || [],
             policy: useSemantic ? semantic.policy : row.classification || this.manifest.classification || {}, roleEvidence: semantic?.roleEvidence || row.browserRoleEvidence || null,
-            publication: row.state === 'ready' && !this.manifest.entries.some(entry => entry.state === 'ready' && entry.id === (row.output?.id || row.id)) ? 'needs-review' : row.state,
-            preparation: row.preparation || null, admission: row.admission || null,
+            publication: row.duplicateOf ? 'duplicate' : row.state === 'ready' && !this.manifest.entries.some(entry => entry.state === 'ready' && entry.id === (row.output?.id || row.id)) ? 'needs-review' : row.state,
+            duplicateOf: row.duplicateOf || null, preparation: row.preparation || null, admission: row.admission || null,
             kitParentId:row.kitParentId || null,kitHitFile:row.kitHitFile || null,
             reviewAliases:row.output ? [await reviewIdentity({...row.output,reviewId:null})] : []};
     }
@@ -123,7 +123,7 @@ export class ReviewLibrary {
     item(id) { const item = this.items.get(id); if (!item || !ID.test(id)) { throw new Error('Unknown review item'); } return item; }
     session() {
         const ordered = [...this.items.values()].sort((a,b) => a.sourcePath.localeCompare(b.sourcePath,undefined,{numeric:true}) || a.startFrame-b.startFrame || a.id.localeCompare(b.id));
-        const fields = ['id','kind','duration','sourceDuration','channels','startSeconds','endSeconds','rate','startFrame','endFrame','sourceFrames','transients','origin','sourceKey','mediaKey','archived','publication','preparation','admission','filename','sourcePath','currentTags','prediction','policy','roleEvidence','root'];
+        const fields = ['id','kind','duration','sourceDuration','channels','startSeconds','endSeconds','rate','startFrame','endFrame','sourceFrames','transients','origin','sourceKey','mediaKey','archived','publication','duplicateOf','preparation','admission','filename','sourcePath','currentTags','prediction','policy','roleEvidence','root'];
         const items = ordered.map(item => ({...Object.fromEntries(fields.map(key => [key,item[key]])), instrument:this.flags(item.id),review:publicReview(this.data.reviews[item.id]),exposed:Object.hasOwn(this.data.exposures,item.id)}));
         return {items, fingerprint: this.fingerprint, taxonomy: CATEGORIES, canUndo: Boolean(this.data.history.length), token: '', fileCount: this.manifest.sourceFiles || this.manifest.entries.length,
             packCount: new Set([...this.items.values()].map(item => item.sourcePath.split('/').slice(0,-1).join('/'))).size, skipped: this.skipped, flagged: this.manifest.entries.filter(row => row.state === 'failed').length, queuePolicy: 'egc1-curation-v2',
@@ -302,12 +302,20 @@ export class ReviewLibrary {
             row.preparation = {...row.preparation,method:PREPARATION};
             workspace.decisions = {...workspace.decisions,[id]:[...(workspace.decisions?.[id] || []),clone(admission)]};
             await publishWorkspace(this.folder,workspace);
-            this.workspace = workspace; item.publication = row.state; item.admission = admission;
-            return {published:!rejected, state:row.state, outputId:row.output?.id};
+            this.workspace = workspace; item.publication = row.duplicateOf ? 'duplicate' : row.state; item.admission = admission;
+            return {published:!rejected && !row.duplicateOf, state:item.publication, outputId:row.output?.id, duplicateOf:row.duplicateOf};
         });
     }
     async request(path, value) {
         if (path.startsWith('/api/session')) { if (path.includes('refresh=1')) { await this.initialise(); } return this.session(); }
+        if (path === '/api/deduplicate') {
+            return this.publication(async()=>{
+                const workspace=await readWorkspace(this.folder);
+                await publishWorkspace(this.folder,workspace,{progress:this.progress});
+                this.workspace=workspace;
+                return workspace.loopSimilarity;
+            });
+        }
         if (path === '/api/export') { return this.export(); }
         const id = path.split('/').pop();
         if (path.startsWith('/api/review/')) { return this.save(id,value); }

@@ -35,6 +35,7 @@ window.egcReview = {
         const before = new Map(folder.outputs), result = await library.request(...args);
         if (args[0].startsWith('/api/session')) { result.inventory=await readCatalogue(folder);result.folderKey=collection.currentPath!==null ? collection.root.name+'/'+collection.currentPath : '/'+name; }
         if (args[1] !== undefined && collection.root) {
+            if(collection.similarityEnabled && /^\/api\/(admit|withhold|undo)/.test(args[0])) { await collection.consolidate(current()); }
             try { await collection.updateCurrent(current()); }
             catch(error) { message('Sound decision saved; collection totals could not be saved: '+error.message); }
         }
@@ -87,6 +88,20 @@ $('collection-folder-input').addEventListener('change',async event=>{
         await collection.attach({name:rootName,files},current());saveMode();
     } catch(error) { message(error.message); }
 });
+$('deduplicate-loops').addEventListener('click',async()=>{
+    const button=$('deduplicate-loops');
+    if(!library || viewState?.saving) { return; }
+    button.disabled=true;
+    $('review-app').inert=true;$('library-dashboard').inert=true;
+    try {
+        window.rememberDraft();
+        const summary=collection.root ? await collection.consolidate(current()) : await library.request('/api/deduplicate',{});
+        await library.initialise();
+        await window.start();
+        $('loop-similarity-status').textContent=`${summary.checked} loops compared · ${summary.retained} representatives kept · ${summary.excluded} very similar alternatives excluded. Originals are retained.${!writable ? ' Download updated metadata'+(collection.root ? ' and extract it into the parent folder.' : '.') : ''}`;
+    } catch(error) { $('loop-similarity-status').textContent=error.message; }
+    finally { button.disabled=false;$('review-app').inert=false;$('library-dashboard').inert=false; }
+});
 $('collection-refresh').addEventListener('click',async()=>{try{await collection.refresh(current());saveMode();}catch(error){message(error.message);}});
 $('collection-download').addEventListener('click',()=>{
     const url=URL.createObjectURL(new Blob([JSON.stringify(collection.snapshot(),null,2)],{type:'application/json'}));
@@ -111,7 +126,7 @@ async function open({handle = null, files: inputs = [], outputs = [], name: labe
         folder = candidateFolder; library = candidate; name = label; writable = Boolean(handle); sourceSession = session; collectionPath=selectedPath;
         if(collection.root) { collection.currentPath=await collection.locate(current()); }
         if (handle) { await cache.set('last-folder',{handle,name}); }
-        $('refresh').disabled = false; $('export').disabled = false;
+        $('refresh').disabled = false; $('export').disabled = false; $('deduplicate-loops').disabled=false;
         document.body.classList.add('library-open');
         $('review-app').hidden = false; $('review-folder').querySelector('h1').textContent = 'Sample review';
         $('review-choose').textContent = 'change folder'; saveMode();
@@ -133,8 +148,9 @@ $('review-folder-input').addEventListener('change',async event => {
 $('review-download').addEventListener('click',async () => {
     const button = $('review-download'); button.disabled = true;
     try {
-        const blob = await metadataZip(folder.outputs, fraction => message(`Preparing metadata ZIP · ${Math.floor(fraction*100)}%`));
-        const url = URL.createObjectURL(blob), link = document.createElement('a'); link.href = url; link.download = 'egc1-metadata.zip'; link.click();
+        const collectionExport=collection.similarityEnabled && !collection.root?.handle;
+        const blob = await metadataZip(collectionExport ? collection.metadataOutputs() : folder.outputs, fraction => message(`Preparing metadata ZIP · ${Math.floor(fraction*100)}%`));
+        const url = URL.createObjectURL(blob), link = document.createElement('a'); link.href = url; link.download = collectionExport ? 'egc1-collection-metadata.zip' : 'egc1-metadata.zip'; link.click();
         setTimeout(() => URL.revokeObjectURL(url),10000); saveMode();
     } catch (error) { message(error.message); }
     finally { button.disabled = false; }

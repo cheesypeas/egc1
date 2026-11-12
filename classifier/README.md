@@ -24,6 +24,26 @@ show source sounds rather than the instrument's assembled drum-kit choices.
 Manual approval and exclusion refresh the summary. These are prepared catalogue
 counts; the instrument still checks audio when loading it.
 
+Very similar loops contribute one representative to the playable library.
+Comparison uses the left-channel waveform and three frequency-band energy
+patterns, allowing level changes and up to 8 ms of alignment. It requires nearly
+equal phrase lengths or matching integer repetitions (up to eight). Every
+repetition and section must agree, so a shared kit sound or
+a different fill alone does not establish a duplicate. Fingerprints and pair
+comparisons are cached; no model inference is added.
+
+For an existing library, open sample review and choose **Keep one of similar
+loops**. With a source parent linked, this compares all prepared sibling packs.
+The result reports representatives kept and alternatives excluded. Originals,
+provenance and review history remain available under **Excluded / similar
+loops**; each alternative names its retained representative. Approving another
+member selects that version. Rejecting a representative promotes a remaining
+eligible member. Manual approvals take priority, then the most recent approval,
+then instrument favourites and source path for a stable automatic choice.
+Unresolved instrument attention marks remain excluded for manual review. In download mode, collection
+consolidation exports one metadata ZIP with paths relative to the source parent.
+Run consolidation again after adding or independently reprocessing packs.
+
 The saved processing report includes elapsed time, wall time spent in each
 displayed processing stage, and metadata-write time/count. Stage times include
 subsequent bookkeeping until the next stage begins; write time overlaps those
@@ -61,6 +81,7 @@ Original audio is never rewritten. All writes are confined to `.egc1/`:
 - `kits/<source-id>/`: optional hit WAVs and native-format kit manifests.
 - `banks.json`: standard 3-by-4 bank layout, created only if absent.
 - `overrides.json`: explicit category corrections; existing overrides win.
+- `browser/loop-fingerprints/`: versioned compact audio similarity fingerprints.
 - `browser/report.json`, `browser/raw-analysis/`, `browser/embeddings/`, `semantic/`: resumable browser
   classification results and report.
 

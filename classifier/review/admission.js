@@ -21,8 +21,8 @@ export function renderAdmission(state, refresh, setBounds, advance, persist, que
     const item = state.current;
     $('admission').hidden = !state.session.publicationSupported || !item;
     if ($('admission').hidden) { return; }
-    $('admission-state').textContent = item.publication === 'ready' ? 'Included in the playable library' : 'Excluded from the playable library';
-    $('admission-reasons').textContent = item.publication==='ready' && item.admission ? 'Earlier checks resolved by your approval.' : (item.preparation?.reasons || []).map(reason => reason.replaceAll('-', ' ')).join(' · ');
+    $('admission-state').textContent = item.publication === 'ready' ? 'Included in the playable library' : item.duplicateOf ? 'Similar loop excluded · one representative kept' : 'Excluded from the playable library';
+    $('admission-reasons').textContent = item.duplicateOf ? `Kept: ${item.duplicateOf.pack ? item.duplicateOf.pack+'/' : ''}${item.duplicateOf.path}. Approve this version to use it instead.` : item.publication==='ready' && item.admission ? 'Earlier checks resolved by your approval.' : (item.preparation?.reasons || []).map(reason => reason.replaceAll('-', ' ')).join(' · ');
     $('admission-beats-label').hidden = !state.draft.tags.includes('loops');
     const loop=state.draft.tags.includes('loops'), synth=state.draft.tags.includes('synth');
     $('admission-end').parentElement.firstChild.textContent=loop ? 'Loop end (source seconds)' : 'End (optional tail trim, source seconds)';

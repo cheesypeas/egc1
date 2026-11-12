@@ -6,6 +6,7 @@ export function renderDashboard(state, actions, collection, currentName) {
     const current=summariseInventory([state.session.inventory || {}],state.session.taxonomy);
     const linked=Boolean(collection.root), combined=linked ? collection.summary() : current;
     $('library-dashboard').hidden=false;
+    $('loop-similarity-scope').textContent=linked ? `Compare all prepared folders in ${collection.root.name}.` : 'Compare loops in the current folder.';
     $('current-pack-name').textContent=currentName || 'Current folder';
     $('current-pack-counts').textContent=`${current.ready} ready · ${current.pending} to review · ${current.excluded} excluded`;
     $('collection-name').textContent=linked ? collection.root.name : 'Parent collection not linked';
