@@ -1,54 +1,70 @@
 # Instrument manual
 
 The manual is a buildless static page at `manual/index.html`. The home page links
-to `/manual/`; deploying this repository through the existing GitHub Pages setup
-serves it at `https://egc.one/manual/`. Keep the existing `CNAME` and hosting setup.
+to `/manual/`; the existing GitHub Pages setup serves it at
+`https://egc.one/manual/` once this branch is integrated and published. Keep the
+existing `CNAME` and hosting setup. Updating this branch does not publish it.
 
 Edit the HTML for content, `manual/manual.css` for presentation, and
-`manual/manual.js` for search, bank selection, and print behaviour. The manual
-works without JavaScript: all sections and effects tables remain available. The manual uses system fonts. No package installation or build is needed.
+`manual/manual.js` for search, bank selection, and print behaviour. All sections
+and effects tables remain available without JavaScript. The manual uses system
+fonts. No package installation or build is needed.
 
 The SVG panel and recording timeline in `manual/assets/` are original drawings.
-The supplied reference photo is deliberately not included. Yellow-button order
-was confirmed by the owner as Transport, Instrument, Mode, Quantise.
-The owner also confirmed the round controls with keys along the bottom: green
-turntable upper left, green joystick upper right, orange rollerball lower right,
-and purple Loop button lower left.
+The supplied reference photo is deliberately not included. The owner confirmed
+the yellow-button order as Transport, Instrument, Mode, Quantise. With keys
+along the bottom, the green turntable is upper left, green joystick upper right,
+orange rollerball lower right, and purple Loop button lower left.
 
 ## Content sources
 
-The first edition was checked against these local source snapshots on
-26 October 2026:
+This edition was checked on 12 November 2026 against:
 
-- ToySequencer `49b2b71`, branch `codex/instrument-sound-click`: input gestures in
-  `Controller.cpp` and `PianoKeyInput.cpp`; mode/bank coupling in `ModeManager.cpp`;
-  default channels in `ChannelConfiguration.h/.cpp`; effects in `Parameters.cpp`
-  and `FxKnobControl.cpp`; timing and capture in `Sequencer.cpp`.
-- Bundled ToySampler `240bcf2`: `PluginProcessor.cpp/.h`, `Sounds.cpp`,
-  `RecordAudio.cpp`, and `ToySampler.json`, including the master backspin route.
-- Standalone ToySampler `ee53283`: cross-check of sampler modes, loading,
-  chopping, audio capture, and host effects. This checkout has later host
-  configuration changes; the manual describes the shared player controls.
-- ToySpinBack README and implementation: master effect, transport requirement,
-  busy handling, and next-bar return.
-- ToySequencer master `8d18762`: older rollerball sound-advance mapping and the
-  Repeat-enable latch fix. The manual calls out differences rather than assuming
-  the instrument has every branch's changes installed.
+- ToySequencer local `master`, `8b65d27`: input dispatch in `Controller.cpp` and
+  `PianoKeyInput.cpp`; channel mapping/defaults in `ChannelConfiguration.cpp/.h`;
+  mode/bank coupling in `ModeManager.cpp`; FX maps in `Parameters.cpp` and keyed
+  values/Hold in `FxKnobControl.cpp`; first-loop rounding, recording, grids and
+  undo/redo in `Sequencer.cpp` and `FirstLoopQuantise.cpp`; readiness display in
+  `StartupSequence.cpp`; cut editing in `LoopCutControl.cpp`.
+- Its pinned ToySampler `993cf998ab5c22de4a143f1e81e50e9b782d67e0`: sample bank
+  discovery, feedback and held-key assignments in `docs/SAMPLE_LIBRARY.md`;
+  left-channel loading, beat/content cuts and sample quantisation in
+  `docs/SAMPLE_ANALYSIS.md`; capture/padded stop in `RecordAudio.cpp` and the
+  matching parent `docs/AUDIO_RECORDING.md`.
+- Parent `docs/RECORDING_BEHAVIOUR.md`, `docs/SCALES.md`, `docs/FX_KEYS.md` and
+  `docs/KNOB_LEDS.md`, cross-checked with the source above. Earlier passages and
+  historical deployment records can describe superseded controls: the current
+  source and later recording sections take precedence.
+- ToyDynamics README and source for Amount/Character and Drive/Muffle.
+- ToyReverb README and `configure.py` for the optional Dragonfly Hall amount
+  control. The pinned sampler JSON is a historical reference, not the active
+  rig configuration. The manual qualifies host-dependent reverb and USB discovery.
+- ToySpinBack README and controller trigger for transport-only backspin and
+  next-bar return.
 
-User-facing instrument numbers 1–8 correspond to firmware channels 0–7. The
-manual describes defaults at startup; full-channel clearing can reset recording
-policy in the firmware. A panel reset preserves selected channel and sound-choice
-values, while restarting the audio engine reshuffles loaded file ordering.
+Player channels 1–8 correspond to firmware channels 0–7: two drums, three loops,
+two sampled synths and the 303. There is no dedicated Vocal/Recorded channel.
+The channel table describes startup defaults, not a reading of the live rig.
+Global root/layout controls, per-channel octave automation and held-key offsets
+have different scopes; keep those distinctions in the shortcuts and prose.
 
-Before updating the control reference, inspect the actual installed firmware and
-Sushi configuration. Do not turn intended behaviour or a TODO into a user-facing
-claim. Hardware audition is still needed for sound, latency, capture boundary
-behaviour, and effect routing.
+This was a source-based documentation update. No device was queried, installed,
+flashed or restarted. The actual installed firmware and active Sushi config were
+not rechecked in this session. Before describing a feature as verified on the
+rig, inspect its deployed revisions/configuration and complete the appropriate
+physical checks. Sound, live-input routing, readiness, capture boundaries and
+latency need hardware validation; passing page checks does not establish them.
 
 ## Verification
 
-Check both narrow and wide layouts, local links and SVG XML, search (including
-no results and clearing), all three effects tables, contents navigation, and
-Print / PDF. Printing should include filtered-out sections, every effects table,
-and expanded troubleshooting answers. Keep original source/photo files out of
-the public asset directory.
+Check narrow and wide layouts, local links and SVG XML, search (including no
+results and clearing), all three FX tables, contents navigation and Print/PDF.
+Printing must include filtered-out sections, all FX tables and expanded help
+answers. Keep original source/photo files out of the public asset directory.
+
+Update checks on 12 November 2026: balanced HTML, unique IDs, all 28 local
+links/assets and both SVG documents passed, as did `node --check manual/manual.js`
+and `git diff --check`. No firmware or DSP files changed. Browser QA was
+attempted but Chrome crashed in this environment, including its single-process
+fallback; visual layouts, search interactions and rendered Print/PDF remain
+unverified for this edition. The existing stylesheet and JavaScript are unchanged.
