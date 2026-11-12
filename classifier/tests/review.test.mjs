@@ -24,16 +24,22 @@ test('legacy migration preserves source bytes, labels, notes and old path aliase
  assert(!f.folder.outputs.has('pack/kick.wav'));
  const archive=await metadataZip(f.folder.outputs);assert(archive.size>0);
 });
-test('blind session hides names and predictions, and stores all new issue codes',async()=>{
+test('curation session shows source and current categories without rewriting old judgements',async()=>{
  const {library,sample}=await fixture();
  const item=library.session().items[0];
- for(const key of ['prediction','path','sourcePath','filename','policy','roleEvidence','analysisId']){assert(!(key in item),key);}
+ assert.equal(item.filename,'pack/kick.wav');
+ assert.equal(item.sourcePath,'pack/kick.wav');
+ assert.deepEqual(item.currentTags,['drums','kick']);
+ assert.deepEqual(item.prediction,['drums','kick']);
+ assert.equal(library.session().queuePolicy,'egc1-curation-v2');
  assert(item.instrument.needsAttention);
  await library.save(sample,payload);
  const saved=library.export().reviews[sample];
  assert.equal(saved.boundaries.attackOffsetFrames,20);
  assert.equal(saved.boundaries.endOffsetFrames,-100);
  assert.equal(saved.notes,payload.notes);
+ assert.equal(saved.assisted,true);
+ assert.equal(saved.reviewMode,'curation');
  assert.deepEqual(saved.reasons,[...payload.reasons].sort());
  assert(REASONS.size===18);
  assert(!('prediction' in library.session().items[0].review));
@@ -46,6 +52,21 @@ test('independent review tabs merge the latest store before changing it',async()
  await other.request('/api/reveal/'+sample,{});
  assert.equal(other.data.reviews[sample].notes,payload.notes);
  assert.equal(other.data.revision,2);
+});
+test('opening curation preserves historical blind judgements and undo can restore them',async()=>{
+ const {library,folder,cache,sample}=await fixture();
+ await library.save(sample,payload);
+ const data=await folder.json('.egc1/evaluation.json');
+ data.revision++;data.reviews[sample].assisted=false;delete data.reviews[sample].reviewMode;
+ await folder.writeJson('.egc1/evaluation.json',data);
+ const historical=structuredClone(data.reviews[sample]);
+ const opened=await new ReviewLibrary(folder,cache).initialise();
+ assert.deepEqual(opened.export().reviews[sample],historical);
+ assert.equal(opened.session().items[0].filename,'pack/kick.wav');
+ await opened.save(sample,{...payload,notes:'curated'});
+ assert.equal(opened.export().reviews[sample].assisted,true);
+ await opened.request('/api/undo',{});
+ assert.deepEqual(opened.export().reviews[sample],historical);
 });
 test('import/export, comparison, undo, resolving attention and reload preserve reviews',async()=>{
  const {library,folder,cache,sample}=await fixture();

@@ -1090,3 +1090,26 @@ canvas { background:#080e09; }
 
 a { color:var(--mint); text-underline-offset:3px; }
 .issue-buttons label[hidden] { display:none; }
+
+/* Curation keeps source names and organisation controls available at every size. */
+.queue-tools { display:grid; grid-template-columns:1fr; gap:5px; margin-top:12px; }
+.queue-tools label { font-size:10px; color:var(--muted); margin-top:3px; }
+.queue-tools input,.queue-tools select { min-width:0; width:100%; padding:6px 8px; font:inherit; font-size:12px; background:var(--panel); color:var(--text); border:1px solid var(--line); border-radius:4px; }
+.queue-tools button { margin-top:5px; font-size:11px; padding:6px; }
+#queue-count { font-size:11px; margin:10px 0 0; }
+.queue { min-height:140px; margin-top:8px; }
+.sidebar { overflow-y:auto; }
+.queue-description { min-width:0; display:grid; gap:4px; }
+.queue-description strong { font-weight:500; overflow-wrap:anywhere; }
+.queue-description small { overflow-wrap:anywhere; }
+.item-heading>div { min-width:0; }
+.item-heading h1,.details { overflow-wrap:anywhere; }
+.review-reasons { font-size:12px; line-height:1.6; color:var(--amber); }
+@media (max-width:720px) {
+  .sidebar { display:block; }
+  .queue-tools { display:grid; grid-template-columns:auto minmax(0,1fr); align-items:center; }
+  .queue-tools select { grid-column:2; grid-row:auto; }
+  .queue-tools button { grid-column:1/-1; }
+  .queue { display:block; max-height:220px; }
+  #queue-count { display:block; }
+}

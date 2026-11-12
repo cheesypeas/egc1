@@ -210,3 +210,22 @@ remains synchronised. Native library integration and Python review checks pass.
 
 No broad sample-pack accuracy score or processing-speed improvement is established
 by these tests. The stage diagnostics are needed to measure the next real run.
+
+
+## Visible library curation — 2026-11-12
+
+Names, source paths, current categories and review reasons are shown immediately;
+there is no reveal step or post-save prediction-rating card. Category controls
+start from the current assignment or saved correction. Pending review is the
+default; explicit exclusions have a separate view. Search, category/folder/reason
+filters and source/category/duration sorting apply to browsing and save-next.
+Preferences and unsaved judgements survive navigation/reopening. New saves record
+`assisted: true` and `reviewMode: curation`; historical blind judgements are not
+rewritten when opening the library. Legacy comparison records remain exportable.
+
+Chrome checks pass visible details, natural source ordering, combined filters,
+sorted next/save-next, empty results, draft recovery, saved organisation settings,
+unchanged historical reviews, mobile queue access and no horizontal overflow.
+The full correction/admission test still passes publication, reflagging, bank
+updates, valid exported audio and native reader compatibility. Shared review
+assets match and Python review/API regression checks pass.

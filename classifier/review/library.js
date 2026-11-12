@@ -83,7 +83,7 @@ export class ReviewLibrary {
             mediaKey: row.id, sourceKey: sourceId, path: row.path, sourcePath, filename: sourcePath,
             rate: row.rate, channels: row.channels, startFrame: start, endFrame: end, startSeconds: start / row.rate, endSeconds: end / row.rate,
             sourceFrames, sourceDuration: sourceFrames / row.rate, duration: row.samples / row.rate,
-            transients: (analysis.loop.transients || []).map(frame => frame + start), prediction: useSemantic ? semantic.tags : row.tags || [],
+            transients: (analysis.loop.transients || []).map(frame => frame + start), currentTags: row.tags || [], prediction: useSemantic ? semantic.tags : row.tags || [],
             policy: useSemantic ? semantic.policy : row.classification || this.manifest.classification || {}, roleEvidence: semantic?.roleEvidence || row.browserRoleEvidence || null,
             publication: row.state === 'ready' && !this.manifest.entries.some(entry => entry.state === 'ready' && entry.id === (row.output?.id || row.id)) ? 'needs-review' : row.state,
             preparation: row.preparation || null, admission: row.admission || null,
@@ -107,7 +107,7 @@ export class ReviewLibrary {
                 reviewAliases:[],kitParentId:output.id,kitHitFile:hit.file,channels:output.channels,
                 provenance: {kind: 'extracted', method: 'transient-kit-v1', parentId: parent.id, parentProvenance: parent.provenance},
                 startFrame: start, endFrame: end, startSeconds: start / parent.rate, endSeconds: end / parent.rate,
-                duration: (end - start) / parent.rate, prediction: semantic?.tags || hit.browserTags || [], policy: semantic?.policy || {method: 'unassigned-extracted-hit'}, roleEvidence: semantic?.roleEvidence || null});
+                duration: (end - start) / parent.rate, currentTags:hit.browserTags || semantic?.tags || [], prediction: semantic?.tags || hit.browserTags || [], policy: semantic?.policy || {method: 'unassigned-extracted-hit'}, roleEvidence: semantic?.roleEvidence || null});
         }
     }
     flags(id) {
@@ -122,23 +122,11 @@ export class ReviewLibrary {
     }
     item(id) { const item = this.items.get(id); if (!item || !ID.test(id)) { throw new Error('Unknown review item'); } return item; }
     session() {
-        // Alternate source folders within each kind without exposing filenames or predictions.
-        const ordered = [];
-        for (const kind of ['sample','hit']) {
-            const groups = new Map();
-            for (const item of [...this.items.values()].filter(item => item.kind === kind).sort((a,b) => a.id.localeCompare(b.id))) {
-                const group = item.sourcePath.split('/').slice(0,-1).join('/');
-                if (!groups.has(group)) { groups.set(group,[]); }
-                groups.get(group).push(item);
-            }
-            while ([...groups.values()].some(group => group.length)) {
-                for (const group of groups.values()) { if (group.length) { ordered.push(group.shift()); } }
-            }
-        }
-        const fields = ['id','kind','duration','sourceDuration','channels','startSeconds','endSeconds','rate','startFrame','endFrame','sourceFrames','transients','origin','sourceKey','mediaKey','archived','publication','preparation','admission'];
+        const ordered = [...this.items.values()].sort((a,b) => a.sourcePath.localeCompare(b.sourcePath,undefined,{numeric:true}) || a.startFrame-b.startFrame || a.id.localeCompare(b.id));
+        const fields = ['id','kind','duration','sourceDuration','channels','startSeconds','endSeconds','rate','startFrame','endFrame','sourceFrames','transients','origin','sourceKey','mediaKey','archived','publication','preparation','admission','filename','sourcePath','currentTags','prediction','policy','roleEvidence'];
         const items = ordered.map(item => ({...Object.fromEntries(fields.map(key => [key,item[key]])), instrument:this.flags(item.id),review:publicReview(this.data.reviews[item.id]),exposed:Object.hasOwn(this.data.exposures,item.id)}));
         return {items, fingerprint: this.fingerprint, taxonomy: CATEGORIES, canUndo: Boolean(this.data.history.length), token: '', fileCount: this.manifest.sourceFiles || this.manifest.entries.length,
-            packCount: new Set([...this.items.values()].map(item => item.sourcePath.split('/').slice(0,-1).join('/'))).size, skipped: this.skipped, flagged: this.manifest.entries.filter(row => row.state === 'failed').length, queuePolicy: 'egc1-review-v1',
+            packCount: new Set([...this.items.values()].map(item => item.sourcePath.split('/').slice(0,-1).join('/'))).size, skipped: this.skipped, flagged: this.manifest.entries.filter(row => row.state === 'failed').length, queuePolicy: 'egc1-curation-v2',
             processing: this.manifest.state === 'processing', classifier: this.manifest.classification || {}, previousComparison: this.comparison(this.data.lastComparison),
             publicationSupported: true};
     }
@@ -196,7 +184,7 @@ export class ReviewLibrary {
             this.data.history.push({id, previous: clone(this.data.reviews[id] || null)}); this.data.history = this.data.history.slice(-100);
             const flags = this.flags(id);
             this.data.reviews[id] = {tags: [...new Set(payload.tags)].sort(), certainty: payload.certainty, quality: payload.quality, reasons: [...new Set(payload.reasons)].sort(), notes: payload.notes,
-                boundaries, updatedAt: stamp(), assisted: Boolean(this.data.exposures[id] || flags.known), instrumentFeedback: flags,
+                boundaries, updatedAt: stamp(), assisted: true, reviewMode:'curation', instrumentFeedback: flags,
                 kind: item.kind, sourceId: item.sourceKey, start: item.startFrame, end: item.endFrame, rate: item.rate, origin: item.origin,
                 analysisId: item.analysisId, provenance: clone(item.provenance), prediction: clone(item.prediction), predictionPolicy: clone(item.policy)};
             this.data.exposures[id] ||= stamp(); this.data.lastComparison = id;

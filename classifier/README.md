@@ -144,8 +144,14 @@ Use **review prepared samples** to open `/classifier/review/` with the selected
 folder and generated metadata. It can also open a prepared folder independently.
 Review opens without model downloads; approval runs the local WASM analysis core
 on the corrected phrase. Attention flags, original/region/hit provenance,
-source-frame marks, marked playback, loop-join audition, issue choices, blind
-judgements and post-save comparisons use the native review format.
+source-frame marks, marked playback, loop-join audition and issue choices use
+the native review format. Filenames, source paths and current categories are
+visible immediately. Categories start from the current assignment or your saved
+correction. The queue defaults to pending manual review, with search across names,
+categories, notes and review reasons; folder/category/reason filters; and source,
+category or duration sorting. Included and explicitly excluded sounds have
+separate views. Filters and drafts survive reopening. New saves are recorded as
+curation reviews; existing blind judgements and comparison history are preserved.
 
 Automatic preparation separates analysis context from playable bounds. It checks
 audible start/end positions, fresh attack evidence across frequency bands and
@@ -203,3 +209,7 @@ real WASM core in Chrome:
 python classifier/tests/admission-browser.py --chrome /path/to/chrome \
   --library-tool /path/to/ToyLibrary --check-prepare-guard
 ```
+
+The visible curation/navigation check is `tests/curation-browser.py --chrome
+/path/to/chrome`. It covers filters, sorted navigation, empty results, saved
+preferences, draft recovery and desktop/mobile layouts using generated audio.

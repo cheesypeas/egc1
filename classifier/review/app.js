@@ -9,11 +9,10 @@ const waveformCache = new WeakMap();
 const zoomSteps = [.001, .002, .005, .012, .025, .05, .1, .25, .5, 1, 2, 5, "full"];
 const state = {
   session: null, mode: "sample", filter: "unreviewed", current: null, draft: null,
-  activeCategory: null, revealed: false, details: null, view: "primary", primary: null,
+  activeCategory: null, search: "", category: "", folder: "", reason: "", sort: "source", view: "primary", primary: null,
   original: null, context: null, gain: null, player: null, seek: 0,
   serial: 0, saving: false, drafts: new Map(), buffers: new Map(), bufferBytes: new Map(), ranges: {}, dirty: false, animation: null,
   centers: {}, waveFocus: {}, playbackSerial: 0, restartQueueAfterDraft: false,
-  comparison: null, comparisonBusy: null, comparisonPlayer: null, comparisonPlaybackSerial: 0,
 };
 
 function title(value) {
@@ -41,9 +40,36 @@ function allItems() {
   return state.session.items.filter((item) => item.kind === state.mode);
 }
 
+function itemTags(item) {
+  return item.review?.tags?.length ? item.review.tags : item.currentTags || item.prediction || [];
+}
+
+function itemFolder(item) {
+  return (item.sourcePath || item.filename || "").split("/").slice(0, -1).join("/");
+}
+
+function itemReasons(item) {
+  return [...new Set([...(item.preparation?.reasons || []), ...(item.review?.reasons || []),
+    ...(item.instrument?.needsAttention ? ["instrument-attention"] : [])])];
+}
+
+function itemLabel(item) {
+  const name = (item.sourcePath || item.filename || item.id).split("/").pop();
+  return item.origin === "separated" || item.kind === "hit" ? `${name} · ${item.startSeconds.toFixed(3)}–${item.endSeconds.toFixed(3)} s` : name;
+}
+
 function queueItems() {
-  return allItems().filter((item) => {
-    if (state.filter === "pending") { return item.publication === "needs-review" || item.publication === "rejected"; }
+  const terms = state.search.toLowerCase().trim().split(/\s+/).filter(Boolean);
+  const items = allItems().filter((item) => {
+    const tags = itemTags(item), reasons = itemReasons(item);
+    if (state.category && !tags.includes(state.category)) { return false; }
+    if (state.folder && itemFolder(item) !== (state.folder === "__root__" ? "" : state.folder)) { return false; }
+    if (state.reason && !reasons.includes(state.reason)) { return false; }
+    const text = [item.filename, item.sourcePath, ...tags, ...tags.map(title), ...reasons, item.review?.notes].join(" ").toLowerCase();
+    if (!terms.every(term => text.includes(term))) { return false; }
+    if (state.filter === "pending") { return item.publication === "needs-review"; }
+    if (state.filter === "accepted") { return item.publication === "ready"; }
+    if (state.filter === "excluded") { return item.publication === "rejected"; }
     if (state.filter === "instrument") { return item.instrument?.needsAttention; }
     if (state.filter === "favourites") { return item.instrument?.favourite; }
     if (state.filter === "unreviewed") { return !item.review; }
@@ -53,12 +79,42 @@ function queueItems() {
     if (state.filter === "whole") { return item.kind === "sample" && item.origin !== "separated"; }
     return true;
   });
+  const compare = (a, b) => a.localeCompare(b, undefined, {numeric:true, sensitivity:"base"});
+  return items.sort((a,b) => {
+    if (state.sort === "duration") { return a.duration-b.duration || compare(a.id,b.id); }
+    if (state.sort === "longest") { return b.duration-a.duration || compare(a.id,b.id); }
+    if (state.sort === "category") { const order = compare(itemTags(a).join("/"),itemTags(b).join("/")); if (order) { return order; } }
+    return compare(a.sourcePath || a.filename || "",b.sourcePath || b.filename || "") || a.startFrame-b.startFrame || compare(a.id,b.id);
+  });
+}
+
+function filterOptions(id, values, label) {
+  const select = $(id), signature = JSON.stringify(values);
+  if (select.dataset.values === signature) { return; }
+  select.dataset.values = signature;
+  select.replaceChildren(new Option(label, ""), ...values.map(([value,text]) => new Option(text,value)));
+}
+
+function renderOrganisation() {
+  const items = state.session.items;
+  filterOptions("category-filter", [...new Set(items.flatMap(itemTags))].sort().map(tag => [tag,title(tag)]), "All categories");
+  filterOptions("folder-filter", [...new Set(items.map(itemFolder))].sort().map(folder => [folder || "__root__",folder || "Top level"]), "All folders");
+  filterOptions("reason-filter", [...new Set(items.flatMap(itemReasons))].sort().map(reason => [reason,title(reason.replaceAll("-", " "))]), "All review reasons");
+  $("category-filter").value = state.category;
+  $("folder-filter").value = state.folder;
+  $("reason-filter").value = state.reason;
+  $("queue-search").value = state.search;
+  $("queue-sort").value = state.sort;
+  $("filter").value = state.filter;
+  for (const option of $("filter").options) {
+    option.hidden = ["pending","accepted","excluded"].includes(option.value) && !state.session.publicationSupported;
+  }
 }
 
 function saveLocal() {
   try {
     localStorage.setItem("egc1-review:" + state.session.fingerprint, JSON.stringify({
-      mode: state.mode, current: state.current?.id, drafts: Array.from(state.drafts), savedAt: Date.now(),
+      mode: state.mode, organisation:{filter:state.filter,search:state.search,category:state.category,folder:state.folder,reason:state.reason,sort:state.sort}, current: state.current?.id, drafts: Array.from(state.drafts), savedAt: Date.now(),
       queuePolicy: state.session.queuePolicy,
     }));
   } catch (_) { /* Durable judgements are on the server; browser preferences are optional. */ }
@@ -78,9 +134,10 @@ function changed() {
 }
 
 function renderQueue() {
-  renderComparison();
+  renderOrganisation();
   const items = allItems();
-  const reviewed = items.filter((item) => item.review).length;
+  const reviewed = items.filter((item) => state.session.publicationSupported ? item.publication === "ready" : item.review).length;
+  $("progress-text").textContent = state.session.publicationSupported ? "included" : "reviewed";
   $("samples-count").textContent = state.session.items.filter((item) => item.kind === "sample").length;
   $("hits-count").textContent = state.session.items.filter((item) => item.kind === "hit").length;
   $("reviewed").textContent = reviewed;
@@ -97,15 +154,23 @@ function renderQueue() {
     state.session.processing && classifier.total ? `Updating categories: ${classifier.done || 0} / ${classifier.total}. Finished suggestions are available.` :
     "Categories use audio recognition. Suggestions are provisional; unclassified means the model is unsure." :
     "Audio classification uses a pitch-only baseline. Unclassified means no category was assigned.";
+  const visible = queueItems();
+  $("queue-count").textContent = `${visible.length} shown · ${items.length} in this collection`;
   const queue = $("queue");
   queue.replaceChildren();
-  for (const item of queueItems()) {
+  for (const item of visible) {
     const button = document.createElement("button");
     button.className = "queue-item" + (item.id === state.current?.id ? " active" : "");
     const dot = document.createElement("span");
     dot.className = "state-dot" + (item.review ? item.review.certainty === "clear" ? " done" : " unsure" : "");
     const text = document.createElement("span");
-    text.textContent = `${state.mode === "hit" ? "Hit" : "Sample"} ${String(items.indexOf(item) + 1).padStart(3, "0")}`;
+    text.className = "queue-description";
+    const name = document.createElement("strong"), detail = document.createElement("small"), location = document.createElement("small");
+    name.textContent = itemLabel(item);
+    detail.textContent = [...itemTags(item).map(title), item.publication === "needs-review" ? "Needs review" : item.publication === "rejected" ? "Excluded" : item.publication === "ready" ? "Included" : ""].filter(Boolean).join(" · ");
+    location.textContent = itemFolder(item) || "Top level";
+    text.append(name,detail,location);
+    button.title = `${item.sourcePath || item.filename || ""}\n${itemReasons(item).join(", ")}`;
     const duration = document.createElement("small");
     duration.textContent = item.duration.toFixed(2) + " s";
     button.append(dot, text, duration);
@@ -113,62 +178,6 @@ function renderQueue() {
     button.addEventListener("click", () => select(item));
     queue.append(button);
   }
-}
-
-function renderComparison() {
-  state.comparison = state.session?.previousComparison || null;
-  const previous = state.comparison;
-  $("previous-comparison").hidden = !previous;
-  if (!previous) { return; }
-  $("comparison-human").textContent = previous.tags.length ? previous.tags.map(title).join(" · ") : "Unsure / no category chosen";
-  const predicted = previous.prediction.filter((tag) => tag !== "unclassified");
-  $("comparison-prediction").textContent = predicted.length ? predicted.map(title).join(" · ") :
-    previous.predictionMethod === "pitch-rule-v1" ? "Unclassified · earlier pitch-only baseline" : "Unclassified — no assignment";
-  $("comparison-replay").disabled = !previous.available;
-  $("comparison-replay").textContent = state.comparisonPlayer ? "■ Stop replay" : "▶ Replay previous";
-  for (const button of document.querySelectorAll("[data-comparison]")) {
-    const selected = button.dataset.comparison === previous.rating;
-    button.classList.toggle("selected", selected);
-    button.setAttribute("aria-pressed", String(selected));
-    button.disabled = !previous.available || state.comparisonBusy === previous.id;
-  }
-  $("comparison-status").textContent = state.comparisonPlayer ? "Playing the previous sample. Your current review stays open." :
-    previous.rating ? "Assessment saved separately. Your original listening judgement is unchanged." :
-    "Compare the previous sample. Your original listening judgement stays recorded separately.";
-  if (state.current?.id === previous.id) {
-    $("blind-badge").textContent = "Prediction shown · further edits assisted";
-    $("blind-badge").classList.add("assisted");
-  }
-}
-
-function stopComparison() {
-  state.comparisonPlaybackSerial++;
-  if (state.comparisonPlayer) {
-    state.comparisonPlayer.onended = null;
-    state.comparisonPlayer.stop(); state.comparisonPlayer = null;
-  }
-  if (state.session) { renderComparison(); }
-}
-
-async function replayComparison() {
-  if (state.comparisonPlayer) { stopComparison(); return; }
-  const previous = state.comparison;
-  if (!previous?.available) { return; }
-  stop(); stopComparison();
-  const serial = state.comparisonPlaybackSerial;
-  try {
-    const ctx = audioContext();
-    await ctx.resume();
-    const buffer = await loadBuffer("/api/audio/" + previous.id, previous.mediaKey);
-    if (serial !== state.comparisonPlaybackSerial || state.comparison?.id !== previous.id) { return; }
-    const source = ctx.createBufferSource();
-    source.buffer = buffer; source.connect(state.gain);
-    state.comparisonPlayer = source;
-    source.onended = () => {
-      if (state.comparisonPlayer === source) { state.comparisonPlayer = null; renderComparison(); }
-    };
-    source.start(); renderComparison();
-  } catch (error) { $("comparison-status").textContent = "Cannot replay the previous sample: " + error.message; }
 }
 
 function renderJudgement() {
@@ -332,7 +341,6 @@ function viewAudio(view = state.view) {
 
 async function play(view = state.view, bounds = null) {
   if (!state.current || !state.primary) { return; }
-  stopComparison();
   const serial = state.serial;
   const playbackSerial = ++state.playbackSerial;
   const ctx = audioContext();
@@ -658,12 +666,11 @@ function renderSourceOrigin(item) {
 async function select(item, autoplay = false) {
   if (!item || state.saving) { return; }
   rememberDraft();
-  stopComparison();
   stop();
   const serial = ++state.serial;
   state.current = item;
   state.draft = JSON.parse(JSON.stringify(state.drafts.get(item.id) || item.review || {
-    tags: [], certainty: "clear", quality: null, reasons: [], notes: "", boundaries: {},
+    tags: [...(item.currentTags || item.prediction || [])].filter(tag => tag !== "unclassified"), certainty: "clear", quality: null, reasons: [], notes: "", boundaries: {},
   }));
   state.draft.boundaries = {
     attackFrame: state.draft.boundaries?.attackFrame ?? null,
@@ -676,16 +683,17 @@ async function select(item, autoplay = false) {
   state.waveFocus = { ...state.centers };
   state.activeCategory = state.draft.tags.find((tag) => Object.keys(categoryNames).includes(tag)) || null;
   state.dirty = state.drafts.has(item.id);
-  state.revealed = false; state.details = null; state.view = hasMarks() ? "marks" : "primary"; state.primary = null; state.original = null;
-  $("details").hidden = true;
-  $("reveal").disabled = false;
-  const assisted = item.exposed || item.instrument?.known;
-  $("blind-badge").textContent = item.instrument?.known ? "Instrument feedback · assisted" : assisted ? "Previously revealed · assisted" : "Names & predictions hidden";
-  $("blind-badge").classList.toggle("assisted", assisted);
-  const ordinal = allItems().findIndex((candidate) => candidate.id === item.id) + 1;
-  $("item-title").textContent = `${item.kind === "hit" ? "Hit" : "Sample"} ${String(ordinal).padStart(3, "0")}`;
-  $("item-kind").textContent = item.kind === "hit" ? "EXTRACTED HIT REVIEW" : item.archived ? "REVIEWED SOURCE · NOW SPLIT" : item.origin === "separated" ? "SEPARATED SAMPLE · CHECK SPLIT" : "BLIND SAMPLE REVIEW";
+  state.view = hasMarks() ? "marks" : "primary"; state.primary = null; state.original = null;
+  $("item-title").textContent = itemLabel(item);
+  $("item-kind").textContent = item.kind === "hit" ? "EXTRACTED HIT" : item.archived ? "REVIEWED SOURCE · NOW SPLIT" : item.origin === "separated" ? "SEPARATED SAMPLE" : "SAMPLE";
   $("item-meta").textContent = `${item.duration.toFixed(3)} seconds · ${item.channels === 1 ? "mono" : "stereo"} · ${(item.rate / 1000).toFixed(1)} kHz`;
+  $("details").textContent = `${item.sourcePath || item.filename || ""} · Current category: ${(item.currentTags || item.prediction || []).map(title).join(" · ") || "Unassigned"}`;
+  if (item.review?.tags?.length) { $("details").textContent += ` · Saved correction: ${item.review.tags.map(title).join(" · ")}`; }
+  if (item.roleEvidence?.mode === "alternatives") {
+    $("details").textContent += ` · Suggested alternatives: ${item.roleEvidence.candidates.map(title).join(" or ")}`;
+  }
+  $("item-review-reasons").textContent = itemReasons(item).map(reason => reason.replaceAll("-", " ")).join(" · ");
+  $("item-review-reasons").hidden = !itemReasons(item).length;
   renderSourceOrigin(item);
   $("view-primary").firstChild.textContent = item.kind === "hit" ? "Hit " : "Sample ";
   $("view-source").hidden = item.kind !== "hit" && item.origin !== "separated";
@@ -702,7 +710,7 @@ async function select(item, autoplay = false) {
     if (serial !== state.serial) { return; }
     state.primary = primary; state.original = original;
     renderViews(); drawAll();
-    status(state.dirty ? "Unsaved judgement · Enter saves and moves on." : "Space to listen. Your judgements save separately from sample tags.");
+    status(state.dirty ? "Unsaved judgement · Enter saves and moves on." : state.session.publicationSupported ? "Check the category and cuts, save, then approve the corrected sound below." : "Space to listen. Save your corrected category and cuts when ready.");
     if (autoplay) { await play(); }
   } catch (error) {
     if (serial === state.serial) { status(error.message, true); }
@@ -713,20 +721,21 @@ function navigate(direction) {
   const items = queueItems();
   if (!items.length) { return; }
   const index = items.findIndex((item) => item.id === state.current?.id);
+  if (index < 0) { select(direction > 0 ? items[0] : items.at(-1)); return; }
   select(items[(index + direction + items.length) % items.length]);
 }
 
-function pickAfter(previousId) {
-  const full = allItems();
+function pickAfter(previousId, previousQueue) {
   const candidates = queueItems();
   if (state.restartQueueAfterDraft) { state.restartQueueAfterDraft = false; return candidates[0]; }
-  const last = full.findIndex((item) => item.id === previousId);
-  return candidates.find((item) => full.indexOf(item) > last) || candidates[0];
+  const remaining = new Map(candidates.map(item => [item.id,item]));
+  const index = previousQueue.indexOf(previousId);
+  return previousQueue.slice(index+1).map(id => remaining.get(id)).find(Boolean) || candidates.find(item => item.id !== previousId) || candidates[0];
 }
 
 async function save(unsure = false) {
   if (!state.current || state.saving) { return; }
-  const id = state.current.id;
+  const id = state.current.id, previousQueue = queueItems().map(item => item.id);
   if (unsure) {
     state.draft.certainty = "unsure";
     state.draft.tags = [];
@@ -747,7 +756,7 @@ async function save(unsure = false) {
     state.dirty = false;
     state.session = await request("/api/session");
     state.saving = false;
-    const next = pickAfter(id);
+    const next = pickAfter(id, previousQueue);
     if (next) { await select(next, $("autoplay").checked); }
     else {
       state.current = state.session.items.find((item) => item.id === id);
@@ -765,9 +774,8 @@ async function save(unsure = false) {
 async function switchMode(mode) {
   rememberDraft();
   state.mode = mode;
-  if (!["instrument", "favourites"].includes(state.filter)) { state.filter = "unreviewed"; }
   $("filter").value = state.filter;
-  const next = queueItems()[0] || allItems()[0];
+  const next = queueItems()[0];
   if (next) { await select(next); }
   else { emptyQueue(); }
 }
@@ -775,7 +783,7 @@ async function switchMode(mode) {
 function emptyQueue() {
   stop(); state.serial++; state.current = null; state.primary = null; state.original = null;
   $("workspace").hidden = true; $("loading").hidden = false;
-  $("loading").textContent = state.mode === "hit" ? "No extracted hits yet. Use ToyLibrary export-kit, then refresh this library." : "No prepared audio is available. Run ToyLibrary prepare, then refresh this library.";
+  $("loading").textContent = "No sounds match these filters. Change the review status, folder or category, or clear the search.";
   renderQueue();
 }
 
@@ -784,7 +792,7 @@ async function refresh() {
     rememberDraft();
     state.buffers.clear(); state.bufferBytes.clear();
     state.session = await request("/api/session?refresh=1");
-    const item = state.session.items.find((item) => item.id === state.current?.id) || queueItems()[0] || allItems()[0];
+    const item = queueItems().find((item) => item.id === state.current?.id) || queueItems()[0];
     if (item) { await select(item); } else { emptyQueue(); }
     renderQueue();
   } catch (error) { status(error.message, true); }
@@ -793,34 +801,23 @@ async function refresh() {
 $("samples-tab").addEventListener("click", () => switchMode("sample"));
 $("hits-tab").addEventListener("click", () => switchMode("hit"));
 $("refresh").addEventListener("click", refresh);
-$("comparison-replay").addEventListener("click", replayComparison);
-for (const button of document.querySelectorAll("[data-comparison]")) {
-  button.addEventListener("click", async () => {
-    const previous = state.comparison;
-    if (!previous || state.comparisonBusy === previous.id) { return; }
-    state.comparisonBusy = previous.id; renderComparison();
-    try {
-      const result = await request("/api/comparison/" + previous.id,
-        { rating: button.dataset.comparison, reviewedAt: previous.reviewedAt });
-      if (state.comparison?.id === previous.id && state.comparison.reviewedAt === previous.reviewedAt) {
-        state.session.previousComparison = result;
-      }
-    } catch (error) {
-      if (state.comparison?.id === previous.id) { $("comparison-status").textContent = "Could not save assessment: " + error.message; }
-      return;
-    } finally {
-      if (state.comparisonBusy === previous.id) { state.comparisonBusy = null; }
-      for (const choice of document.querySelectorAll("[data-comparison]")) {
-        choice.disabled = !state.comparison?.available || state.comparisonBusy === state.comparison?.id;
-      }
-    }
-    renderComparison();
-  });
-}
-$("filter").addEventListener("change", () => {
-  state.filter = $("filter").value;
+function applyQueueFilters() {
+  rememberDraft();
+  const candidates = queueItems();
   renderQueue();
-  if (!queueItems().some((item) => item.id === state.current?.id) && queueItems()[0]) { select(queueItems()[0]); }
+  if (!candidates.some(item => item.id === state.current?.id)) {
+    if (candidates[0]) { void select(candidates[0]); }
+    else { emptyQueue(); }
+  }
+  saveLocal();
+}
+$("filter").addEventListener("change", () => { state.filter = $("filter").value; applyQueueFilters(); });
+for (const [id,key] of [["category-filter","category"],["folder-filter","folder"],["reason-filter","reason"],["queue-sort","sort"]]) {
+  $(id).addEventListener("change", () => { state[key] = $(id).value; applyQueueFilters(); });
+}
+$("queue-search").addEventListener("input", () => { state.search = $("queue-search").value; applyQueueFilters(); });
+$("clear-queue-filters").addEventListener("click", () => {
+  state.search = state.category = state.folder = state.reason = ""; applyQueueFilters();
 });
 $("play").addEventListener("click", () => state.player ? stop(true) : play());
 $("previous").addEventListener("click", () => navigate(-1));
@@ -959,26 +956,9 @@ $("undo").addEventListener("click", async () => {
     if (item) {
       state.drafts.delete(item.id); state.dirty = false; state.mode = item.kind;
       if (state.filter === "unreviewed" && item.review) { $("filter").value = state.filter = "all"; }
-      await select(item); status("Previous judgement restored. Revealed labels stay marked as assisted.");
+      await select(item); status("Previous saved judgement restored.");
     }
     renderQueue();
-  } catch (error) { status(error.message, true); }
-});
-$("reveal").addEventListener("click", async () => {
-  if (!state.current) { return; }
-  const id = state.current.id;
-  try {
-    const details = await request("/api/reveal/" + id, {});
-    if (state.current?.id !== id) { return; }
-    state.current.exposed = true; state.revealed = true;
-    $("details").hidden = false;
-    $("details").textContent = `${details.filename} · Suggestion: ${details.prediction.join(", ") || "unassigned"} · ${details.policy.method || "legacy"}. Any new or edited judgement on this item is now assisted.`;
-    if (details.roleEvidence?.mode === "alternatives") {
-      $("details").textContent += ` Role uncertain: ${details.roleEvidence.candidates.map(title).join(" or ")} (alternatives, not combined instruments).`;
-    }
-    $("blind-badge").textContent = "Details revealed · assisted";
-    $("blind-badge").classList.add("assisted");
-    $("reveal").disabled = true;
   } catch (error) { status(error.message, true); }
 });
 $("export").addEventListener("click", async () => {
@@ -997,7 +977,6 @@ document.addEventListener("keydown", (event) => {
     if (event.ctrlKey && event.key === "Enter") { event.preventDefault(); save(); }
     return;
   }
-  if (event.target.closest("#previous-comparison") && ["Enter", " "].includes(event.key)) { return; }
   const key = event.key.toLowerCase();
   if ([" ", "arrowleft", "arrowright", "enter", "s", "z", "a", "b", "c", "m", "j", "g", "x", ...roleKeys, "1", "2", "3", "4", "5"].includes(key)) { event.preventDefault(); }
   if (key === " ") { state.player ? stop(true) : play(); }
@@ -1023,11 +1002,8 @@ window.addEventListener("beforeunload", rememberDraft);
 async function start() {
   try {
     state.session = await request("/api/session");
-    if (state.session.items.some(item => item.instrument?.needsAttention)) {
-      $("filter").value = state.filter = "instrument";
-    } else if (state.session.publicationSupported && state.session.items.some(item => item.publication === "needs-review")) {
-      $("filter").value = state.filter = "pending";
-    }
+    if (state.session.publicationSupported) { state.filter = "pending"; }
+    else if (state.session.items.some(item => item.instrument?.needsAttention)) { state.filter = "instrument"; }
     try {
       let saved = JSON.parse(localStorage.getItem("egc1-review:" + state.session.fingerprint) || localStorage.getItem("toy-audition:" + state.session.fingerprint) || "null");
       if (!saved) {
@@ -1042,8 +1018,15 @@ async function start() {
         state.mode = saved.mode === "hit" ? "hit" : "sample";
         const ids = new Set(state.session.items.map((item) => item.id));
         state.drafts = new Map((saved.drafts || []).filter(([id]) => ids.has(id)));
-        // Start a changed queue from its diverse first round, while preserving
-        // the item under an unfinished judgement and all surviving drafts.
+        // Keep unfinished work when the catalogue changes; organise fresh
+        // sessions by source rather than the earlier blind listening order.
+        if (saved.queuePolicy === state.session.queuePolicy && saved.organisation) {
+          const organisation = saved.organisation;
+          for (const key of ["search","category","folder","reason"]) { if (typeof organisation[key] === "string") { state[key] = organisation[key]; } }
+          if (["source","category","duration","longest"].includes(organisation.sort)) { state.sort = organisation.sort; }
+          if ([...$("filter").options].some(option => option.value === organisation.filter) &&
+              (state.session.publicationSupported || !["pending","accepted","excluded"].includes(organisation.filter))) { state.filter = organisation.filter; }
+        }
         state.resume = saved.queuePolicy === state.session.queuePolicy || state.drafts.has(saved.current) ? saved.current : null;
         state.restartQueueAfterDraft = saved.queuePolicy !== state.session.queuePolicy && state.drafts.has(saved.current);
       }
@@ -1054,9 +1037,9 @@ async function start() {
     renderQueue();
     const draftItem = allItems().find((candidate) => candidate.id === state.resume && state.drafts.has(candidate.id));
     if (draftItem?.review) { $("filter").value = state.filter = "all"; }
-    const item = draftItem || queueItems().find((candidate) => candidate.id === state.resume) || queueItems()[0] || allItems()[0];
+    const item = draftItem || queueItems().find((candidate) => candidate.id === state.resume) || queueItems()[0];
     if (item) { await select(item); }
-    else { $("loading").textContent = "No prepared audio is available. Prepare a sample folder, then refresh this page."; }
+    else { emptyQueue(); }
   } catch (error) { $("loading").textContent = "Could not open the library: " + error.message; }
 }
 

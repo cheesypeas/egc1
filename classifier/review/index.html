@@ -26,7 +26,7 @@
     <section class="review-folder" id="review-folder" aria-labelledby="review-title">
       <p class="eyebrow"><span class="eyebrow-line"></span> EGC1</p>
       <h1 id="review-title">Sample review</h1>
-      <p class="intro-copy">Choose a prepared sample folder or USB stick.<br class="desktop-break"> Instrument attention flags open first. Audio stays on your computer.</p>
+      <p class="intro-copy">Choose a prepared sample folder or USB stick.<br class="desktop-break"> Excluded candidates open in the manual review queue. Audio stays on your computer.</p>
       <div class="actions"><button class="button primary" id="review-choose">choose folder ↗</button><input id="review-folder-input" type="file" webkitdirectory multiple hidden><button class="button quiet" id="review-download" hidden>download metadata ↓</button><input id="review-import" type="file" accept="application/json,.json" hidden><button class="button quiet" id="review-import-button" type="button" hidden>import reviews</button></div>
       <p id="review-save-mode" role="status">Review accepted samples and excluded candidates. Audio stays on your computer.</p>
     </section>
@@ -38,22 +38,26 @@
       <div class="queue-summary"><strong id="reviewed">0</strong><span id="progress-text">reviewed</span><span id="total">/ 0</span></div>
       <progress id="progress" max="1" value="0" aria-label="Review progress"></progress>
       <label class="filter-label" for="filter">Show</label>
-      <select id="filter"><option value="pending">Excluded · manual review</option><option value="unreviewed">Unreviewed</option><option value="instrument">Flagged on instrument</option><option value="favourites">Favourites</option><option value="all">All items</option><option value="unsure">Needs another listen</option><option value="rejected">Extraction / grouping problems</option><option value="separated">Separated samples</option><option value="whole">Whole-file samples</option></select>
+      <select id="filter"><option value="pending">Needs manual review</option><option value="accepted">Included in library</option><option value="excluded">Explicitly excluded</option><option value="unreviewed">Unreviewed</option><option value="instrument">Flagged on instrument</option><option value="favourites">Favourites</option><option value="all">All items</option><option value="unsure">Needs another listen</option><option value="rejected">Extraction / grouping problems</option><option value="separated">Separated samples</option><option value="whole">Whole-file samples</option></select>
+      <div class="queue-tools" aria-label="Organise samples">
+        <label for="queue-search">Search</label><input id="queue-search" type="search" placeholder="Filename, category, notes…">
+        <label for="category-filter">Category</label><select id="category-filter"><option value="">All categories</option></select>
+        <label for="folder-filter">Source folder</label><select id="folder-filter"><option value="">All folders</option></select>
+        <label for="reason-filter">Review reason</label><select id="reason-filter"><option value="">All review reasons</option></select>
+        <label for="queue-sort">Sort</label><select id="queue-sort"><option value="source">Source file / position</option><option value="category">Category</option><option value="duration">Shortest first</option><option value="longest">Longest first</option></select>
+        <button id="clear-queue-filters" class="quiet">Clear search & filters</button>
+      </div>
+      <p id="queue-count" class="muted" role="status"></p>
       <div id="queue" class="queue" aria-label="Listening queue"></div>
-      <div class="sidebar-foot"><span id="library-info">Loading local library…</span><p>Source folders are interleaved. Names stay hidden.</p><p id="classifier-info">Loading category model status…</p></div>
+      <div class="sidebar-foot"><span id="library-info">Loading local library…</span><p>Find sounds by source, category or review reason. Approve corrected sounds to add them to your library.</p><p id="classifier-info">Loading category model status…</p></div>
     </aside>
     <main>
       <div id="loading" class="empty-state">Opening your prepared library…</div>
       <div id="workspace" hidden>
         <div id="instrument-feedback" class="previous-comparison" hidden><span id="instrument-feedback-text"></span> <button id="resolve-instrument" class="quiet">Mark flag resolved</button></div>
-        <section id="previous-comparison" class="panel previous-comparison" aria-label="Previous review classification comparison" hidden>
-          <div class="section-heading"><div><p class="eyebrow">PREVIOUS REVIEW</p><h2>How did the pipeline do?</h2></div><button id="comparison-replay" class="quiet">▶ Replay previous</button></div>
-          <div class="comparison-labels"><div><span>Your saved choice</span><strong id="comparison-human"></strong></div><div><span>Pipeline prediction</span><strong id="comparison-prediction"></strong></div></div>
-          <div class="comparison-actions"><button data-comparison="way-off">Way off</button><button data-comparison="close">Close</button><button data-comparison="pipeline-better">Pipeline was better</button></div>
-          <p id="comparison-status" role="status">Your original listening judgement stays recorded separately.</p>
-        </section>
-        <div class="item-heading"><div><p class="eyebrow" id="item-kind">BLIND SAMPLE REVIEW</p><h1 id="item-title">Sample 001</h1><p id="item-meta" class="muted"></p></div><div class="blind-state"><span id="blind-badge" class="badge">Names & predictions hidden</span><button id="reveal" class="quiet">Reveal details</button></div></div>
-        <div id="details" class="details" hidden></div>
+        <div class="item-heading"><div><p class="eyebrow" id="item-kind">SAMPLE</p><h1 id="item-title">Choose a sample</h1><p id="item-meta" class="muted"></p></div></div>
+        <div id="details" class="details"></div>
+        <p id="item-review-reasons" class="review-reasons" hidden></p>
         <div class="source-origin" aria-label="Review item origin"><strong id="source-origin-label"></strong><span id="source-origin-detail"></span></div>
         <section class="player panel" aria-label="Audio player">
           <div class="player-top"><div class="playback-tabs"><button id="view-primary" class="active">Sample <kbd>B</kbd></button><button id="view-marks" disabled>Your marks <kbd>M</kbd></button><button id="view-source" hidden>Original <kbd>A</kbd></button><button id="view-context" hidden>Context <kbd>C</kbd></button></div><span id="audio-time" class="time">0.00 / 0.00 s</span></div>
@@ -87,6 +91,15 @@
           </div>
           <div class="wave-key"><span class="detector-key">Proposed cut / detected attack</span><span class="reference-key">Your reference</span><span class="zero-key">Horizontal line: zero amplitude</span><span>Faint markers: other detected transients</span></div>
         </section>
+        <section class="judgement panel" aria-label="Your listening judgement">
+          <div class="section-heading"><div><h2>What do you hear?</h2><p>Choose more than one category or role when it fits.</p></div><label class="confidence-label">Certainty <select id="certainty"><option value="clear">Clear</option><option value="tentative">Tentative</option><option value="unsure">Unsure</option></select></label></div>
+          <div id="categories" class="category-buttons"></div>
+          <div class="roles-heading"><span id="roles-title">Choose a category to add a role</span><span class="muted">Q–U</span></div><div id="roles" class="role-buttons"></div>
+          <div id="hit-quality" hidden><div class="quality-heading" id="quality-title">Is this a useful extracted hit?</div><p id="quality-help"></p><div class="quality-buttons" aria-describedby="quality-help"><button data-quality="keep">Useful hit <kbd>G</kbd></button><button data-quality="reject">Bad extraction <kbd>X</kbd></button><button data-quality="unsure">Unsure</button></div><p class="issues-heading">What needs attention? <span class="muted">Choose any that apply.</span></p><div class="issue-buttons" id="issues"><label><input type="checkbox" value="wrong-category"> Wrong category</label><label><input type="checkbox" value="wrong-role"> Wrong subcategory / role</label><label><input type="checkbox" value="wrong-root"> Wrong root note / tuning</label><label><input type="checkbox" value="attack"> Attack clipped / starts late</label><label><input type="checkbox" value="leading-silence"> Silence before the sound</label><label><input type="checkbox" value="tail"> Tail cut short</label><label><input type="checkbox" value="trailing-silence"> Silence after the sound</label><label><input type="checkbox" value="loop-gap"> Gap at the loop join</label><label><input type="checkbox" value="loop-click"> Click at the loop join</label><label><input type="checkbox" value="loop-timing"> Wrong loop length / beat timing</label><label><input type="checkbox" value="too-short"> Too short to use / identify</label><label><input type="checkbox" value="silence"> Silent / almost silent</label><label><input type="checkbox" value="distorted"> Clipping / distortion</label><label><input type="checkbox" value="bleed"> Bleed / overlap</label><label><input type="checkbox" value="duplicate"> Duplicate</label><label id="not-drum-issue"><input type="checkbox" value="not-drum"> Not a drum</label><label data-region-issue><input type="checkbox" value="split"> One sound / phrase split apart</label><label data-region-issue><input type="checkbox" value="merged"> Independent sounds left together</label></div></div>
+          <textarea id="notes" rows="2" maxlength="2000" placeholder="Optional listening notes…" aria-label="Listening notes"></textarea>
+          <div class="save-row"><div><button id="save" class="primary">Save & next <kbd>Enter</kbd></button><button id="unsure" class="secondary">Unsure & next <kbd>S</kbd></button><button id="undo" class="quiet" disabled>Undo <kbd>Z</kbd></button></div><label class="check"><input id="autoplay" type="checkbox" checked> Play next on save</label></div>
+          <p id="status" role="status" aria-live="polite">Your judgements save to this library, separately from sample tags.</p>
+        </section>
         <section class="panel admission" id="admission" aria-labelledby="admission-title" hidden>
           <h2 id="admission-title">Manual correction and library approval</h2>
           <p id="admission-state"></p><p id="admission-reasons"></p>
@@ -101,15 +114,6 @@
           <div class="actions"><button id="admission-bounds" class="quiet" type="button">Apply bounds to waveform marks</button><button id="admission-save" class="secondary" type="button">Save judgement here</button><button id="admission-approve" class="primary" type="button">Approve corrected sound</button><button id="admission-reject" class="quiet" type="button">Exclude sound</button></div>
           <p>Save your category and judgement first. Approval uses the saved marks and the corrections above. Saving a judgement or resolving a flag does not approve a sound.</p>
           <p id="admission-status" role="status"></p>
-        </section>
-        <section class="judgement panel" aria-label="Your listening judgement">
-          <div class="section-heading"><div><h2>What do you hear?</h2><p>Choose more than one category or role when it fits.</p></div><label class="confidence-label">Certainty <select id="certainty"><option value="clear">Clear</option><option value="tentative">Tentative</option><option value="unsure">Unsure</option></select></label></div>
-          <div id="categories" class="category-buttons"></div>
-          <div class="roles-heading"><span id="roles-title">Choose a category to add a role</span><span class="muted">Q–U</span></div><div id="roles" class="role-buttons"></div>
-          <div id="hit-quality" hidden><div class="quality-heading" id="quality-title">Is this a useful extracted hit?</div><p id="quality-help"></p><div class="quality-buttons" aria-describedby="quality-help"><button data-quality="keep">Useful hit <kbd>G</kbd></button><button data-quality="reject">Bad extraction <kbd>X</kbd></button><button data-quality="unsure">Unsure</button></div><p class="issues-heading">What needs attention? <span class="muted">Choose any that apply.</span></p><div class="issue-buttons" id="issues"><label><input type="checkbox" value="wrong-category"> Wrong category</label><label><input type="checkbox" value="wrong-role"> Wrong subcategory / role</label><label><input type="checkbox" value="wrong-root"> Wrong root note / tuning</label><label><input type="checkbox" value="attack"> Attack clipped / starts late</label><label><input type="checkbox" value="leading-silence"> Silence before the sound</label><label><input type="checkbox" value="tail"> Tail cut short</label><label><input type="checkbox" value="trailing-silence"> Silence after the sound</label><label><input type="checkbox" value="loop-gap"> Gap at the loop join</label><label><input type="checkbox" value="loop-click"> Click at the loop join</label><label><input type="checkbox" value="loop-timing"> Wrong loop length / beat timing</label><label><input type="checkbox" value="too-short"> Too short to use / identify</label><label><input type="checkbox" value="silence"> Silent / almost silent</label><label><input type="checkbox" value="distorted"> Clipping / distortion</label><label><input type="checkbox" value="bleed"> Bleed / overlap</label><label><input type="checkbox" value="duplicate"> Duplicate</label><label id="not-drum-issue"><input type="checkbox" value="not-drum"> Not a drum</label><label data-region-issue><input type="checkbox" value="split"> One sound / phrase split apart</label><label data-region-issue><input type="checkbox" value="merged"> Independent sounds left together</label></div></div>
-          <textarea id="notes" rows="2" maxlength="2000" placeholder="Optional listening notes…" aria-label="Listening notes"></textarea>
-          <div class="save-row"><div><button id="save" class="primary">Save & next <kbd>Enter</kbd></button><button id="unsure" class="secondary">Unsure & next <kbd>S</kbd></button><button id="undo" class="quiet" disabled>Undo <kbd>Z</kbd></button></div><label class="check"><input id="autoplay" type="checkbox" checked> Play next on save</label></div>
-          <p id="status" role="status" aria-live="polite">Your judgements save to this library, separately from sample tags.</p>
         </section>
       </div>
       <footer><span><kbd>Space</kbd> play / pause</span><span><kbd>←</kbd> <kbd>→</kbd> browse</span><span><kbd>1</kbd>–<kbd>5</kbd> categories</span><span><kbd>Q</kbd>–<kbd>U</kbd> roles</span><span><kbd>A</kbd> source · <kbd>B</kbd> sample · <kbd>C</kbd> context · <kbd>M</kbd> marks · <kbd>J</kbd> join</span></footer>

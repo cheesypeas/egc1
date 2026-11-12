@@ -71,7 +71,9 @@ try:
                 page.wait_for_selector('#admission:not([hidden])')
                 assert page.locator('#filter').input_value() == 'pending'
                 assert 'Excluded' in page.locator('#admission-state').inner_text()
-                page.locator('[data-category="drums"]').click()
+                assert page.locator('#item-title').inner_text() == 'source.wav'
+                assert page.locator('[data-category="drums"]').get_attribute('aria-pressed') == 'true'
+                page.locator('[data-role="snare"]').click()
                 page.locator('[data-role="kick"]').click()
                 page.locator('[data-quality="keep"]').click()
                 page.locator('#admission-start').fill('.05')

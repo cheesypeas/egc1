@@ -45,7 +45,7 @@
 .review-page .app-shell {
     max-width:1180px;
     padding:0 42px;
-    grid-template-columns:224px minmax(0,1fr);
+    grid-template-columns:280px minmax(0,1fr);
 }
 .review-page .sidebar {
     height:100vh;
@@ -83,7 +83,7 @@
 .review-page .tabs { background:#090d0a; }
 .review-page .previous-comparison { background:linear-gradient(120deg,#101a12,#0b100c); }
 @media(max-width:850px) {
-    .review-page .app-shell { padding:0 25px; grid-template-columns:190px minmax(0,1fr); }
+    .review-page .app-shell { padding:0 25px; grid-template-columns:240px minmax(0,1fr); }
     .review-page .panel { padding:18px; }
     .review-page main { padding-left:18px; }
 }
