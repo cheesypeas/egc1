@@ -28,7 +28,7 @@
       <h1 id="review-title">Sample review</h1>
       <p class="intro-copy">Choose a prepared sample folder or USB stick.<br class="desktop-break"> Instrument attention flags open first. Audio stays on your computer.</p>
       <div class="actions"><button class="button primary" id="review-choose">choose folder ↗</button><input id="review-folder-input" type="file" webkitdirectory multiple hidden><button class="button quiet" id="review-download" hidden>download metadata ↓</button><input id="review-import" type="file" accept="application/json,.json" hidden><button class="button quiet" id="review-import-button" type="button" hidden>import reviews</button></div>
-      <p id="review-save-mode" role="status">Completed samples only. No classification models are needed for review.</p>
+      <p id="review-save-mode" role="status">Review accepted samples and excluded candidates. Audio stays on your computer.</p>
     </section>
   </div>
   <div class="app-shell" id="review-app" hidden>
@@ -38,7 +38,7 @@
       <div class="queue-summary"><strong id="reviewed">0</strong><span id="progress-text">reviewed</span><span id="total">/ 0</span></div>
       <progress id="progress" max="1" value="0" aria-label="Review progress"></progress>
       <label class="filter-label" for="filter">Show</label>
-      <select id="filter"><option value="unreviewed">Unreviewed</option><option value="instrument">Flagged on instrument</option><option value="favourites">Favourites</option><option value="all">All items</option><option value="unsure">Needs another listen</option><option value="rejected">Extraction / grouping problems</option><option value="separated">Separated samples</option><option value="whole">Whole-file samples</option></select>
+      <select id="filter"><option value="pending">Excluded · manual review</option><option value="unreviewed">Unreviewed</option><option value="instrument">Flagged on instrument</option><option value="favourites">Favourites</option><option value="all">All items</option><option value="unsure">Needs another listen</option><option value="rejected">Extraction / grouping problems</option><option value="separated">Separated samples</option><option value="whole">Whole-file samples</option></select>
       <div id="queue" class="queue" aria-label="Listening queue"></div>
       <div class="sidebar-foot"><span id="library-info">Loading local library…</span><p>Source folders are interleaved. Names stay hidden.</p><p id="classifier-info">Loading category model status…</p></div>
     </aside>
@@ -86,6 +86,21 @@
             </div>
           </div>
           <div class="wave-key"><span class="detector-key">Proposed cut / detected attack</span><span class="reference-key">Your reference</span><span class="zero-key">Horizontal line: zero amplitude</span><span>Faint markers: other detected transients</span></div>
+        </section>
+        <section class="panel admission" id="admission" aria-labelledby="admission-title" hidden>
+          <h2 id="admission-title">Manual correction and library approval</h2>
+          <p id="admission-state"></p><p id="admission-reasons"></p>
+          <button id="admission-audition" class="quiet" type="button">Load published sound</button><audio id="admission-player" controls hidden></audio>
+          <div class="admission-fields">
+            <label>Playable start (source seconds)<input id="admission-start" type="number" min="0" step="0.000001"></label>
+            <label>Playable end (source seconds)<input id="admission-end" type="number" min="0" step="0.000001"></label>
+            <label>Root note (MIDI, optional)<input id="admission-root" type="number" min="0" max="127" step="0.01"></label>
+            <label id="admission-beats-label">Beats in marked loop<input id="admission-beats" type="number" min="2" max="128" step="1"></label>
+          </div>
+          <label>Chop positions (source seconds, separated by commas)<textarea id="admission-transients" rows="2" spellcheck="false"></textarea></label>
+          <div class="actions"><button id="admission-bounds" class="quiet" type="button">Apply bounds to waveform marks</button><button id="admission-save" class="secondary" type="button">Save judgement here</button><button id="admission-approve" class="primary" type="button">Approve corrected sound</button><button id="admission-reject" class="quiet" type="button">Exclude sound</button></div>
+          <p>Save your category and judgement first. Approval uses the saved marks and the corrections above. Saving a judgement or resolving a flag does not approve a sound.</p>
+          <p id="admission-status" role="status"></p>
         </section>
         <section class="judgement panel" aria-label="Your listening judgement">
           <div class="section-heading"><div><h2>What do you hear?</h2><p>Choose more than one category or role when it fits.</p></div><label class="confidence-label">Certainty <select id="certainty"><option value="clear">Clear</option><option value="tentative">Tentative</option><option value="unsure">Unsure</option></select></label></div>

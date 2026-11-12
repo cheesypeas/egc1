@@ -121,3 +121,10 @@
     .library-open .review-folder { grid-template-columns:1fr; padding:24px 0; }
     .library-open .review-folder .actions { justify-content:flex-start; }
 }
+.admission-fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.admission label { display:block; margin:10px 0; }
+.admission input, .admission textarea { display:block; width:100%; margin-top:5px; background:#0b100c; color:#e6eee6; border:1px solid #52664e; padding:9px; }
+.admission .actions { display:flex; gap:10px; flex-wrap:wrap; }
+#admission-state { color:#e8b86a; font-weight:bold; }
+#admission-status { min-height:1.5em; }
+@media (max-width:600px) { .admission-fields { grid-template-columns:1fr; } }

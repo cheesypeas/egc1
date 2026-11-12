@@ -158,7 +158,8 @@ export function validOverrides(value) {
 }
 
 export function validAnalysis(data, id, pipeline, info) {
-    if (!data || data.version !== 1 || data.id !== id || data.pipeline !== pipeline || data.channels !== info.channels) { return false; }
+    const sameCore = pipeline.includes(':validated-preparation-v1') && data?.pipeline === pipeline.replace(':validated-preparation-v1','');
+    if (!data || data.version !== 1 || data.id !== id || (data.pipeline !== pipeline && !sameCore) || data.channels !== info.channels) { return false; }
     for (const [name, version] of [['pitch', 5], ['loop', 8], ['vocal', 2]]) {
         const item = data[name];
         if (!item || item.version !== 1 || item.analysisVersion !== version || item.samples !== info.frames || item.rate !== info.rate ||
@@ -176,7 +177,9 @@ export function validAnalysis(data, id, pipeline, info) {
 }
 
 export function validEmbedding(item, id, info, frontend, model) {
-    return item && item.version === 1 && item.id === id && item.frontend === frontend && item.modelSha256 === model &&
+    const sameLeft = frontend === 'clap48k-r8brain-slaney-repeatpad-three-crops-left-web-v2' &&
+        item?.frontend === 'clap48k-r8brain-slaney-repeatpad-three-crops-web-v1' && item.selectedChannel === 0;
+    return item && item.version === 1 && item.id === id && (item.frontend === frontend || sameLeft) && item.modelSha256 === model &&
         item.rate === info.rate && item.samples === info.frames && item.channels === info.channels &&
         Number.isFinite(item.peak) && item.peak >= 0 && Array.isArray(item.vectors) && item.vectors.length >= 1 && item.vectors.length <= 3 &&
         item.vectors.every(v => Array.isArray(v) && v.length === 512 && v.every(Number.isFinite) && Math.abs(Math.hypot(...v) - 1) < .001);

@@ -173,3 +173,40 @@ pipeline changes, not changes deployed with the bank-summary update.
 
 These checks establish execution and compatibility, not listening quality across
 all sample packs or deployment of the updated instrument firmware/plugin.
+
+## Validated preparation and manual admission — 2026-11-12
+
+The browser now publishes only accepted sounds. All original candidates, failed
+checks and explicit admission decisions remain in a separate workspace. A human
+issue report withdraws a sound; saving a judgement is separate from approving
+corrected audio. Source audio is unchanged. Classification follows the left
+channel used for playback. Compatible raw analyses/left-channel embeddings are
+reused without rerunning the model solely for the new validation identity.
+
+The checked loop search on the reviewed Track 02 region found relative frames
+902–197,933, versus the user's 901–197,933. The reviewed Track 06 hat's audible
+bounds were 879–22,973 versus the user's 903–22,980 (less than 0.6 ms apart).
+The thirty-marker sustained region retained two supported candidates and rejected
+twenty-eight; its ambiguous attacks send it to manual review. These observations
+are diagnostic examples, not independent proof of general accuracy. The hat's
+wrong category remains a manual correction, not a claim of classifier retraining.
+
+Checks cover ringing-decay rejection, real attacks 8 ms apart, interior phrase
+search with multiple surrounding hits, ambiguous loops/categories, DC/silence,
+left-channel cache migration, write-failure withdrawal, stale review revisions,
+changed source audio, approval persistence, long-source manual rescue and kit-hit
+withdrawal. A collision regression ensures forced raw reanalysis cannot overwrite
+an approved manual root when source/output bytes have the same audio identity.
+
+Real Chrome integration verifies an excluded-only library, corrected bounds and
+chops, explicit approval, published-output audition, review-to-processor bank
+updates, valid ZIP hashes/provenance, renewed human flagging and rejection with
+decision history intact. The native `ToyLibrary banks` reader accepts the export;
+the updated native preparation command refuses to overwrite approval-managed
+metadata. Desktop/390 px layouts have no horizontal overflow. The full processing
+integration also passes real model inference, pause/resume, cache reuse, malformed
+file isolation and fresh inference offline. The shared native/browser review UI
+remains synchronised. Native library integration and Python review checks pass.
+
+No broad sample-pack accuracy score or processing-speed improvement is established
+by these tests. The stage diagnostics are needed to measure the next real run.

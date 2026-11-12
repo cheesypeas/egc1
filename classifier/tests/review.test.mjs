@@ -113,7 +113,11 @@ test('changed audio is rejected before playback',async()=>{
 
 test('review migration shares the processor write lock without reacquiring it',async()=>{
  const previous=Object.getOwnPropertyDescriptor(globalThis,'navigator'),locks=[];
- Object.defineProperty(globalThis,'navigator',{configurable:true,value:{locks:{request:async(name,run)=>{locks.push(name);return run();}}}});
- try { await fixture(true); assert.deepEqual(locks,['egc-classifier-write']); }
+ let held=false;
+ Object.defineProperty(globalThis,'navigator',{configurable:true,value:{locks:{request:async(name,options,callback)=>{
+  assert.equal(held,false,'publication must not recursively acquire the migration lock');
+  held=true;locks.push(name);try{return await (callback||options)({name});}finally{held=false;}
+ }}}});
+ try { await fixture(true); assert.deepEqual(locks,['egc-classifier-write','egc-classifier-write']); }
  finally { if(previous){Object.defineProperty(globalThis,'navigator',previous);}else{delete globalThis.navigator;} }
 });

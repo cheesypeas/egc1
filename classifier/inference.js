@@ -1,9 +1,9 @@
 import * as ort from './vendor/ort.wasm.min.mjs';
 import createAnalysis from './vendor/analysis.mjs';
-import {hashBytes, spectrogram, strongestChannel} from './audio.js';
+import {hashBytes, spectrogram} from './audio.js';
 
-export const FRONTEND = 'clap48k-r8brain-slaney-repeatpad-three-crops-web-v1';
-export const PIPELINE = 'browser-library-1:core-802b986:left-zero-crossings:frontend-r8brain-v1';
+export const FRONTEND = 'clap48k-r8brain-slaney-repeatpad-three-crops-left-web-v2';
+export const PIPELINE = 'browser-library-1:core-802b986:left-zero-crossings:frontend-r8brain-v1:validated-preparation-v1';
 ort.env.wasm.numThreads = 1; // Works on ordinary static hosting without COOP/COEP headers.
 ort.env.wasm.wasmPaths = new URL('./vendor/', import.meta.url).href;
 ort.env.logLevel = 'warning';
@@ -82,7 +82,7 @@ export class Inference {
         return session;
     }
     async audio(channels, rate) {
-        const native = await this.native(), channel = strongestChannel(channels);
+        const native = await this.native(), channel = 0;
         let mono = channels[channel];
         if (rate !== 48000) {
             const ptr = native._malloc(mono.byteLength);

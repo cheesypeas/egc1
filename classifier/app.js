@@ -1,6 +1,7 @@
 import {Folder, metadataZip} from './storage.js';
 import {audioInfo, readWav} from './audio.js';
-import {destination} from './taxonomy.js';
+import {destination,bankSummary,BANKS} from './taxonomy.js';
+import {readWorkspace} from './preparation.js';
 
 const $ = selector => document.querySelector(selector);
 const number = value => (value || 0).toLocaleString();
@@ -13,7 +14,7 @@ let total = 0, done = 0, within = 0, started = 0, stoppedAt = 0, timer = null, a
 let context = null, source = null, buffer = null, playStarted = 0, playOffset = 0, playEnd = 0, playing = false, animation = null;
 let renderQueued = false, previewSequence = 0;
 const PAGE_SIZE = 30;
-const filterNames = ['All', 'Drums', 'Loops', 'Synth', 'Voice', 'FX', 'Uncertain', 'Attention', 'Failed'];
+const filterNames = ['All', 'Manual review', 'Drums', 'Loops', 'Synth', 'Voice', 'FX', 'Uncertain', 'Attention', 'Failed'];
 const sourceKind = row => row.browserKind === 'hit' ? 'Kit hit' : row.provenance?.kind === 'separated' ? 'Separated region' : 'Whole file';
 const manualCategories = [
     ['Drums · unspecified hit', ['drums']], ['Drums · kick', ['drums', 'kick']], ['Drums · snare', ['drums', 'snare']],
@@ -38,6 +39,7 @@ function log(message, error = false) {
     $('#log-count').textContent = `(${Math.min(120, $('#event-log').children.length)})`;
 }
 function folderSelected() {
+    reviewSession = crypto.randomUUID();
     if (worker) { worker.terminate(); worker = null; }
     stopPlayback();
     rows.clear(); analyses.clear(); outputs.clear(); report = null; paused = false; page = 0;
@@ -206,9 +208,10 @@ async function receive(data) {
     if (data.type === 'corrected') {
         if (report) { report.bankSummary = data.summary; }
         for (const row of rows.values()) { if (row.id === data.id) { row.tags = data.tags; row.tagsSource = 'manual'; row.needsReview = false; } }
+        for (const row of data.rows || []) { Object.assign(rows.get(row.path) || {},row); }
         if (selected?.id === data.id) { selected.tags = data.tags; selected.tagsSource = 'manual'; updatePlayerMeta(); }
         $('#correction').hidden = true; $('#save-correction').disabled = false;
-        notice(handle ? 'Manual category saved. It will take priority on future runs.' : 'Manual category saved to this export. Download the updated metadata ZIP.');
+        notice('Manual category saved. The sound is excluded until you approve it in detailed review.');
         render();
     }
 }
@@ -224,6 +227,7 @@ function isUncertain(row) { return row.tags?.includes('unclassified') || row.bro
 function matches(row, filter) {
     if (filter === 'All') { return true; }
     if (filter === 'Failed') { return row.state === 'failed'; }
+    if (filter === 'Manual review') { return row.state === 'needs-review' || row.state === 'rejected'; }
     if (filter === 'Attention') { return Boolean(row.feedback?.needsAttention); }
     if (filter === 'Uncertain') { return row.state === 'ready' && isUncertain(row); }
     return row.state === 'ready' && destination(row.tags) === filter;
@@ -253,7 +257,7 @@ function render() {
     for (const row of filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)) {
         const tr = document.createElement('tr'); tr.classList.toggle('selected', selected?.path === row.path);
         const play = document.createElement('td'), button = document.createElement('button');
-        button.type = 'button'; button.className = 'row-play'; button.textContent = '▶'; button.disabled = row.state !== 'ready'; button.setAttribute('aria-label', `Play ${basename(row.path)}`);
+        button.type = 'button'; button.className = 'row-play'; button.textContent = '▶'; button.disabled = row.state === 'failed'; button.setAttribute('aria-label', `Play ${basename(row.path)}`);
         button.addEventListener('click', event => { event.stopPropagation(); void selectSound(row, true); }); play.append(button);
         const name = document.createElement('td'), title = document.createElement('span'), path = document.createElement('span');
         title.className = 'sample-name'; title.textContent = basename(row.provenance?.sourcePath || row.path);
@@ -263,6 +267,10 @@ function render() {
         const category = document.createElement('td'), tags = document.createElement('div'); tags.className = 'tags';
         if (row.state === 'failed') { const tag = document.createElement('span'); tag.className = 'tag failed'; tag.textContent = 'not processed'; tags.append(tag); }
         else {
+            if (row.state !== 'ready') {
+                const tag = document.createElement('span'); tag.className = 'tag failed'; tag.textContent = 'manual review · excluded';
+                tag.title = (row.preparation?.reasons || []).join(', '); tags.append(tag);
+            }
             const family = row.tags.find(tag => ['drums', 'loops', 'synth', 'vocal', 'fx', 'unclassified'].includes(tag)) || 'unclassified';
             for (const value of row.tags.filter(tag => tag !== 'recorded')) {
                 const tag = document.createElement('span'); tag.className = `tag ${family}`; tag.textContent = value === 'unclassified' ? 'uncertain' : value; tags.append(tag);
@@ -278,7 +286,7 @@ function render() {
         else if (row.feedback?.favourite) { status.textContent = '★'; status.title = 'Favourite on the instrument'; status.classList.add('favourite'); }
         else if (row.cached) { status.textContent = '↻'; status.title = 'Reused saved analysis'; }
         tr.append(play, name, category, origin, duration, status);
-        tr.addEventListener('click', () => { if (row.state === 'ready') { void selectSound(row, false); } else { notice(`${row.path}: ${row.error}`, true); } });
+        tr.addEventListener('click', () => { if (row.state !== 'failed') { void selectSound(row, false); } else { notice(`${row.path}: ${row.error}`, true); } });
         tbody.append(tr);
     }
     $('#empty-results').hidden = filtered.length > 0;
@@ -290,7 +298,7 @@ function renderBankSummary() {
     const summary = report?.bankSummary, panel = $('#bank-summary');
     panel.hidden = running || paused || !summary;
     if (panel.hidden) { return; }
-    $('#bank-summary-note').textContent = `${number(summary.uniqueSamples)} unique samples. Sounds can appear in several banks. ${number(summary.unassigned)} samples have no bank assignment.`;
+    $('#bank-summary-note').textContent = `${number(summary.uniqueSamples)} accepted samples. ${number([...rows.values()].filter(row => row.state === 'needs-review' || row.state === 'rejected').length)} excluded for manual review. Sounds can appear in several banks. ${number(summary.unassigned)} accepted samples have no bank assignment.`;
     const groups = $('#bank-groups'); groups.replaceChildren();
     for (const [mode, banks] of summary.banks.entries()) {
         const group = document.createElement('div'), heading = document.createElement('h3'), list = document.createElement('ul');
@@ -457,12 +465,34 @@ if ('serviceWorker' in navigator && !new URLSearchParams(location.search).has('n
     navigator.serviceWorker.register('./sw.js').catch(() => { log('Offline page caching is unavailable; processing still works while this page is open.'); });
 }
 
-let reviewWindow = null;
+let reviewWindow = null, reviewSession = crypto.randomUUID(), reviewUpdateSequence = 0;
 $('#open-review').addEventListener('click', () => {
     reviewWindow = window.open(new URL('./review/', location.href), 'egc1-sample-review');
     if (!reviewWindow) { notice('Allow this site to open the review page, then try again.'); }
 });
-window.addEventListener('message', event => {
-    if (event.origin !== location.origin || event.source !== reviewWindow || event.data?.type !== 'egc1-review-ready') { return; }
-    reviewWindow.postMessage({type:'egc1-review-library', handle, files, outputs:[...outputs], name:folderName},location.origin);
+window.addEventListener('message', async event => {
+    if (event.origin !== location.origin || event.source !== reviewWindow) { return; }
+    if (event.data?.type === 'egc1-review-ready') {
+        reviewWindow.postMessage({type:'egc1-review-library', handle, files, outputs:[...outputs], name:folderName,session:reviewSession},location.origin);
+    } else if (event.data?.type === 'egc1-publication-changed' && event.data.session === reviewSession && !running) {
+        const sequence = ++reviewUpdateSequence;
+        try {
+            for (const [path,blob] of event.data.outputs || []) { outputs.set(path,blob); }
+            const folder = getFolder(), workspace = await readWorkspace(folder), manifest = await folder.json('.egc1/library.json');
+            const kits = new Map();
+            for (const row of manifest.entries) {
+                const kit = await folder.json(`.egc1/kits/${row.id}/kit.json`);
+                if (kit?.hits?.length) { kits.set(row.id,kit.hits.length); }
+            }
+            if (sequence !== reviewUpdateSequence) { return; }
+            rows.clear(); for (const row of workspace.entries) { rows.set(row.path,row); }
+            report ||= {failures:[],kits:0,hits:0};
+            report.bankSummary = bankSummary(await folder.json('.egc1/banks.json') || BANKS,manifest.entries,kits);
+            const inputs = [...new Map([...files.map(({path,file})=>[path,file]),...outputs])].map(([path,file])=>({path,file}));
+            ensureWorker().postMessage({type:'refresh',handle,files:inputs});
+            $('#results').hidden = false;
+            $('#export-metadata').hidden = Boolean(handle) || !outputs.size;
+            render(); notice('Library updated from manual review. Excluded sounds are absent from the bank summary.');
+        } catch(error) { notice(error.message,true); }
+    }
 });

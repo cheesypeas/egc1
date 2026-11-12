@@ -43,6 +43,7 @@ function allItems() {
 
 function queueItems() {
   return allItems().filter((item) => {
+    if (state.filter === "pending") { return item.publication === "needs-review" || item.publication === "rejected"; }
     if (state.filter === "instrument") { return item.instrument?.needsAttention; }
     if (state.filter === "favourites") { return item.instrument?.favourite; }
     if (state.filter === "unreviewed") { return !item.review; }
@@ -239,6 +240,12 @@ function renderJudgement() {
   $("notes").value = state.draft.notes;
   $("certainty").value = state.draft.certainty;
   renderOffsets();
+  window.egcReview?.renderAdmission?.(state, async () => {
+    const id = state.current?.id;
+    state.session = await request("/api/session?refresh=1");
+    const item = state.session.items.find(item => item.id === id);
+    if (item) { await select(item); }
+  }, boundaries => { state.draft.boundaries = boundaries; marksChanged(); });
 }
 
 function toggleCategory(category) {
@@ -1018,6 +1025,8 @@ async function start() {
     state.session = await request("/api/session");
     if (state.session.items.some(item => item.instrument?.needsAttention)) {
       $("filter").value = state.filter = "instrument";
+    } else if (state.session.publicationSupported && state.session.items.some(item => item.publication === "needs-review")) {
+      $("filter").value = state.filter = "pending";
     }
     try {
       let saved = JSON.parse(localStorage.getItem("egc1-review:" + state.session.fingerprint) || localStorage.getItem("toy-audition:" + state.session.fingerprint) || "null");
@@ -1039,7 +1048,7 @@ async function start() {
         state.restartQueueAfterDraft = saved.queuePolicy !== state.session.queuePolicy && state.drafts.has(saved.current);
       }
     } catch (_) { /* Browser storage is optional. */ }
-    if (state.filter === "instrument" && !queueItems().length) {
+    if (["instrument", "pending"].includes(state.filter) && !queueItems().length) {
       state.mode = state.mode === "sample" ? "hit" : "sample";
     }
     renderQueue();

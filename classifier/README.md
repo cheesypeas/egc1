@@ -14,14 +14,14 @@ sample folder. Keep originals and `.egc1` together when moving a library.
 Progress and completed results appear during processing. Pause finishes the
 current sample before saving; reopening and running the same folder reuses
 compatible completed analysis. Listen with the play buttons, filter/search the
-results and use **edit category** to save a manual override. An individual bad
+results and use **edit category** to send a correction to manual review. An individual bad
 file is reported without stopping the remaining sources.
 
 Completed runs show all twelve banks, including empty banks, using this folder's
 `banks.json`. Sample counts deduplicate identical audio and allow membership in
 several banks. Extracted-kit banks show both kit and sound counts; sample banks
 show source sounds rather than the instrument's assembled drum-kit choices.
-Manual category corrections refresh the summary. These are prepared catalogue
+Manual approval and exclusion refresh the summary. These are prepared catalogue
 counts; the instrument still checks audio when loading it.
 
 The saved processing report includes elapsed time, wall time spent in each
@@ -54,29 +54,31 @@ suggested categories/cuts still need listening checks.
 
 Original audio is never rewritten. All writes are confined to `.egc1/`:
 
-- `library.json`: version 1 ready-only catalogue (failed rows remain explicit).
+- `library.json`: version 1 accepted-only playable catalogue.
+- `workspace.json`: all candidates, validation failures and manual admission history.
 - `entries/<SHA256>.json`: portable pitch/transient/loop/vocal/gate analysis.
 - `regions/`, `imports/`: silence-separated WAVs and source provenance.
 - `kits/<source-id>/`: optional hit WAVs and native-format kit manifests.
 - `banks.json`: standard 3-by-4 bank layout, created only if absent.
 - `overrides.json`: explicit category corrections; existing overrides win.
-- `browser/report.json`, `browser/embeddings/`, `semantic/`: resumable browser
+- `browser/report.json`, `browser/raw-analysis/`, `browser/embeddings/`, `semantic/`: resumable browser
   classification results and report.
 
 Identifiers hash exact audio-file bytes. Existing instrument favourites,
 attention flags, resolution records and review files are read/preserved.
 Browser analysis and embeddings carry their own preprocessing identities;
-future native preparation can deliberately recompute them rather than silently
-mixing the browser resampler with the PC ffmpeg frontend. The compiled analysis
+native readers can consume the published catalogue. Updated native preparation,
+tag editing and review tools refuse to overwrite an approval-managed library;
+make corrections in the browser. The compiled analysis
 core and Beat This! preprocessing/postprocessing use the existing native source.
 
 Pitch, transient, vocal, gate and beat analysis use the left source channel,
 matching mono instrument playback. Transient and vocal cuts search backwards
 up to 2 ms for a quieter zero crossing without moving past the detected attack.
-Original stereo files and derived region audio retain their channel layout;
-acoustic classification still uses its existing strongest-channel frontend.
-The updated pipeline automatically refreshes older cut analysis while reusing
-compatible classifier embeddings and preserving manual labels and feedback.
+Original stereo files retain their channel layout. Published playable regions
+are mono and classification uses the same left channel. Compatible left-channel
+embeddings and raw analysis are reused; right-channel embeddings are recomputed.
+Manual labels, approvals and feedback survive reprocessing.
 Prepare packs separately: each folder's audio and `.egc1` can be combined with
 other prepared packs on the updated instrument, without a merge or combined pass.
 
@@ -140,9 +142,35 @@ See `THIRD_PARTY_NOTICES.txt` and the linked licence/source files for attributio
 
 Use **review prepared samples** to open `/classifier/review/` with the selected
 folder and generated metadata. It can also open a prepared folder independently.
-No models are loaded for review. Attention flags, original/region/hit provenance,
+Review opens without model downloads; approval runs the local WASM analysis core
+on the corrected phrase. Attention flags, original/region/hit provenance,
 source-frame marks, marked playback, loop-join audition, issue choices, blind
 judgements and post-save comparisons use the native review format.
+
+Automatic preparation separates analysis context from playable bounds. It checks
+audible start/end positions, fresh attack evidence across frequency bands and
+time scales, performed beat intervals and candidate loop joins. A loopable phrase
+can sit inside the source with extra events at either end. Model confidence alone
+does not approve a loop. Dense periodic triggers and ambiguous cuts/categories
+go to **manual review** instead of becoming playable sounds or kit hits.
+
+Both automatic checks and human issue reports can flag an exception. Flagged
+sounds are excluded from `library.json`, generated kits and accepted bank counts.
+In **review prepared samples**, use the **manual review** filter, choose clear
+categories, mark corrected source bounds and save the judgement. The admission
+panel lets you correct source-second chop positions, MIDI root and loop beat
+count. Then explicitly approve the corrected sound, or exclude it. Saving a
+judgement alone does not publish it. Resolve any instrument attention flag
+separately before approval. **Audition published sound** plays the actual output.
+
+Approval publishes a mono WAV of the marked phrase with rebased analysis. A
+corrected extracted kit hit is admitted as a standalone sound; it does not
+silently rejoin its old kit. Continuous sources over 60 seconds can also enter
+manual review so a shorter phrase can be selected. Original predictions, failed
+checks, source-frame marks, processing identity and admission decisions are
+retained in the workspace/review export for subsequent pipeline evaluation.
+These checks are conservative heuristics; broad listening validation is still
+needed, especially for quiet attacks, dense rolls and unusual phrase lengths.
 
 Direct folder access saves `.egc1/evaluation.json`; download mode also retains
 reviews in IndexedDB, keyed by dataset identity, and exports `egc1-metadata.zip`.
@@ -167,3 +195,11 @@ python3 classifier/sync-review-ui.py /path/to/sampler-checkout --check
 handles folder selection and browser persistence. `review/site.css` adapts the
 shared player to the processor stylesheet, including the common site header,
 spacing, typography and controls. No local HTTP API is needed.
+
+The manual correction/approval integration check uses generated audio and the
+real WASM core in Chrome:
+
+```sh
+python classifier/tests/admission-browser.py --chrome /path/to/chrome \
+  --library-tool /path/to/ToyLibrary --check-prepare-guard
+```

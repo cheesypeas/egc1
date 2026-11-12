@@ -1,8 +1,9 @@
 import {Folder, metadataZip} from '../storage.js';
 import {ReviewLibrary} from './library.js';
+import {renderAdmission} from './admission.js';
 
 const $ = id => document.getElementById(id);
-let library = null, folder = null, name = '', writable = false, opening = false;
+let library = null, folder = null, name = '', writable = false, opening = false, sourceSession = null;
 const cache = {
     async database() {
         if (!this.promise) {
@@ -22,7 +23,15 @@ const cache = {
     async set(key,value) { this.memory.set(key,structuredClone(value)); try { await this.storedSet(key,value); } catch (_) { message('Browser storage is unavailable. Save metadata before closing.'); } },
 };
 window.egcReview = {
-    request: (...args) => library.request(...args),
+    renderAdmission,
+    request: async (...args) => {
+        const before = new Map(folder.outputs), result = await library.request(...args);
+        if (args[1] !== undefined && window.opener && sourceSession) {
+            window.opener.postMessage({type:'egc1-publication-changed',session:sourceSession,
+                outputs:[...folder.outputs].filter(([path,blob]) => before.get(path) !== blob)},location.origin);
+        }
+        return result;
+    },
     audio: path => library.audio(path),
 };
 const message = text => { $('review-save-mode').textContent = text; };
@@ -32,7 +41,7 @@ function saveMode() {
 }
 const script = document.createElement('script'); script.src = './app.js';
 await new Promise((resolve,reject) => { script.onload = resolve; script.onerror = reject; document.head.append(script); });
-async function open({handle = null, files: inputs = [], outputs = [], name: label = 'samples'}) {
+async function open({handle = null, files: inputs = [], outputs = [], name: label = 'samples', session = null}) {
     if (opening) { return; }
     opening = true; $('review-choose').disabled = true;
     try {
@@ -41,7 +50,7 @@ async function open({handle = null, files: inputs = [], outputs = [], name: labe
         const candidateFolder = new Folder(handle,inputs, event => { if (event.message || event.stage) { message(event.message || event.stage); } });
         candidateFolder.outputs = new Map(outputs);
         const candidate = await new ReviewLibrary(candidateFolder,cache,message).initialise();
-        folder = candidateFolder; library = candidate; name = label; writable = Boolean(handle);
+        folder = candidateFolder; library = candidate; name = label; writable = Boolean(handle); sourceSession = session;
         if (handle) { await cache.set('last-folder',{handle,name}); }
         $('refresh').disabled = false; $('export').disabled = false;
         document.body.classList.add('library-open');
