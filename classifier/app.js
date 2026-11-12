@@ -13,9 +13,11 @@ let handle = null, files = [], folderName = '', worker = null, running = false, 
 let total = 0, done = 0, within = 0, started = 0, stoppedAt = 0, timer = null, activeFilter = 'All', page = 0, selected = null;
 let context = null, source = null, buffer = null, playStarted = 0, playOffset = 0, playEnd = 0, playing = false, animation = null;
 let renderQueued = false, previewSequence = 0;
+let previewTransients = [], previewLabel = '';
 const PAGE_SIZE = 30;
 const filterNames = ['All', 'Manual review', 'Similar loops', 'Drums', 'Loops', 'Synth', 'Voice', 'FX', 'Uncertain', 'Attention', 'Failed'];
 const sourceKind = row => row.browserKind === 'hit' ? 'Kit hit' : row.provenance?.kind === 'separated' ? 'Separated region' : 'Whole file';
+const playableRow = row => row.state === 'ready' && row.output ? row.output : row;
 const manualCategories = [
     ['Drums · unspecified hit', ['drums']], ['Drums · kick', ['drums', 'kick']], ['Drums · snare', ['drums', 'snare']],
     ['Drums · clap', ['drums', 'clap']], ['Drums · hi-hat', ['drums', 'hat']], ['Drums · tom', ['drums', 'tom']],
@@ -281,7 +283,9 @@ function render() {
         category.append(tags);
         const origin = document.createElement('td'); origin.className = 'source-type'; origin.textContent = row.state === 'failed' ? '—' : sourceKind(row);
         if (row.kitHits) { origin.textContent += ` · ${row.kitHits}-hit kit`; }
-        const duration = document.createElement('td'); duration.className = 'duration-cell'; duration.textContent = row.samples && row.rate ? `${(row.samples / row.rate).toFixed(2)}s` : '—';
+        const sound = playableRow(row), bounds = sound === row ? row.preparation?.bounds : null;
+        const samples = bounds ? bounds.end-bounds.start : sound.samples;
+        const duration = document.createElement('td'); duration.className = 'duration-cell'; duration.textContent = samples && sound.rate ? `${(samples / sound.rate).toFixed(2)}s` : '—';
         const status = document.createElement('td'); status.className = 'row-state';
         if (row.duplicateOf) { status.textContent = '≈'; status.title = 'Similar loop excluded; kept '+row.duplicateOf.path; }
         else if (row.feedback?.needsAttention) { status.textContent = '!'; status.title = 'Marked for attention on the instrument'; status.classList.add('attention'); }
@@ -347,18 +351,20 @@ function stopPlayback() {
 }
 function updatePlayerMeta() {
     $('#player-name').textContent = basename(selected.provenance?.sourcePath || selected.path);
-    $('#player-info').textContent = `${sourceKind(selected).toLowerCase()} · ${selected.tags.join(' / ')}${selected.tagsSource === 'manual' ? ' · edited' : ''}`;
+    $('#player-info').textContent = `${sourceKind(selected).toLowerCase()} · ${selected.tags.join(' / ')}${selected.tagsSource === 'manual' ? ' · edited' : ''}${previewLabel ? ' · '+previewLabel : ''}`;
 }
 async function selectSound(row, autoplay) {
     const seq = ++previewSequence;
     if (autoplay) { await audioContext().resume(); }
-    stopPlayback(); selected = row; buffer = null; playOffset = 0;
+    stopPlayback(); selected = row; buffer = null; playOffset = 0; previewTransients = [];
+    const sound = playableRow(row);
+    previewLabel = sound !== row ? 'library sound' : row.preparation?.bounds ? 'proposed cut' : 'source audio';
     $('#audition').hidden = false; $('#correction').hidden = true; document.body.classList.add('has-player');
     updatePlayerMeta(); $('#player-time').textContent = 'loading…'; $('#player-play').disabled = true;
     $('#player-loop').checked = row.tags.includes('loops');
     $('#edit-category').disabled = running; render();
     try {
-        const folder = getFolder(), file = await folder.file(row.path);
+        const folder = getFolder(), file = await folder.file(sound.path);
         if (!file) { throw new Error('The audio file is no longer available. Select the folder again.'); }
         const info = await audioInfo(file);
         let channels;
@@ -368,12 +374,19 @@ async function selectSound(row, autoplay) {
             channels = Array.from({length: decoded.numberOfChannels}, (_, ch) => decoded.getChannelData(ch));
         } else { channels = await readWav(file, info); }
         if (seq !== previewSequence) { return; }
-        buffer = audioContext().createBuffer(channels.length, channels[0].length, info.rate);
-        channels.forEach((channel, index) => { buffer.copyToChannel(channel, index); });
-        let analysis = analyses.get(row.id);
-        if (!analysis) { analysis = await folder.json(`.egc1/entries/${row.id}.json`); if (analysis) { analyses.set(row.id, analysis); } }
+        let analysis = analyses.get(sound.id);
+        if (!analysis) { analysis = await folder.json(`.egc1/entries/${sound.id}.json`); if (analysis) { analyses.set(sound.id, analysis); } }
         if (seq !== previewSequence) { return; }
-        playEnd = row.tags.includes('loops') && analysis?.loop?.loopEndSample > 0 ? Math.min(buffer.duration, analysis.loop.loopEndSample / info.rate) : buffer.duration;
+        const bounds = sound === row ? row.preparation?.bounds : null;
+        const start = bounds?.start ?? 0;
+        const end = bounds?.end ?? (sound === row && row.tags.includes('loops') && analysis?.loop?.loopEndSample > 0 ? Math.min(channels[0].length,analysis.loop.loopEndSample) : channels[0].length);
+        if(!Number.isInteger(start) || !Number.isInteger(end) || start<0 || end<=start || end>channels[0].length) { throw Error('Saved playable boundaries are invalid. Open detailed review to correct them.'); }
+        // Match publication exactly: exported audio is already cropped, while
+        // pending proposals use the stored local bounds on the left channel.
+        buffer = audioContext().createBuffer(1,end-start,info.rate);
+        buffer.copyToChannel(channels[0].subarray(start,end),0);
+        previewTransients = (analysis?.loop?.transients || []).filter(at=>at>=start && at<end).map(at=>at-start);
+        playEnd = buffer.duration;
         $('#player-play').disabled = false; $('#player-time').textContent = `0.00 / ${playEnd.toFixed(2)}`;
         drawWaveform();
         if (autoplay) { startPlayback(0); }
@@ -423,12 +436,10 @@ function drawWaveform() {
         const height = Math.max(1, Math.min(1, magnitude) * canvas.height * .46);
         ctx.beginPath(); ctx.moveTo(x + .5, canvas.height / 2 - height); ctx.lineTo(x + .5, canvas.height / 2 + height); ctx.stroke();
     }
-    const loop = analyses.get(selected.id)?.loop;
     ctx.strokeStyle = '#b7e59455';
-    for (const sample of loop?.transients || []) {
+    for (const sample of previewTransients) {
         const x = sample / buffer.length * canvas.width; ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
     }
-    if (playEnd < buffer.duration) { ctx.fillStyle = '#dba35a22'; ctx.fillRect(playEnd / buffer.duration * canvas.width, 0, canvas.width, canvas.height); }
     $('#wave-playhead').style.left = '0%';
 }
 for (const [name, tags] of manualCategories) { $('#correct-tags').add(new Option(name, JSON.stringify(tags))); }
@@ -494,7 +505,12 @@ window.addEventListener('message', async event => {
             ensureWorker().postMessage({type:'refresh',handle,files:inputs});
             $('#results').hidden = false;
             $('#export-metadata').hidden = Boolean(handle) || !outputs.size;
-            render(); notice('Library updated from manual review. Excluded sounds are absent from the bank summary.');
+            render();
+            if(selected) {
+                const updated=rows.get(selected.path);
+                if(updated) { await selectSound(updated,false); }
+            }
+            notice('Library updated from manual review. Excluded sounds are absent from the bank summary.');
         } catch(error) { notice(error.message,true); }
     }
 });

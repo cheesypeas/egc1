@@ -380,3 +380,24 @@ event sequences retain the identical full loop analysis, and explicit loops
 still reach the timing frontend. All JavaScript suites pass. These checks do
 not establish a whole-folder wall-time speedup; that depends on its candidate
 mix and existing cache.
+
+## Processing preview matches playable cuts — 2026-11-12
+
+The processing-page player loaded the raw analysis-region file from frame zero,
+using the old raw loop-end hint instead of preparation bounds or the exported
+WAV. This included the extra final event even where review and publication
+had a correct shorter cut. The issue was reproduced independently of phrase
+selection; no preparation/model changes are required for this correction.
+
+The player now loads the actual published output for included sounds. Pending
+sounds use their stored proposed start/end on the left channel. Waveforms,
+loop limits, seeking, transient overlays and displayed prepared durations use
+the cropped audio. Manual publication refreshes an existing preview. Invalid
+stored cuts fail visibly rather than auditioning the whole source.
+
+A synthetic Chrome regression inspects actual AudioBufferSourceNode buffers:
+the published cut deliberately differs from its old proposed bounds; pending
+audio has a different start and a loud incompatible right channel. Both yield
+the expected mono frames and exact first/last samples, with a closed one-second
+loop. The legacy loop-end fallback and invalid-cut refusal also pass. All seven
+JavaScript suites and the existing browser correction/admission workflow pass.

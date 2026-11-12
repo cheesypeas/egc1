@@ -17,6 +17,13 @@ compatible completed analysis. Listen with the play buttons, filter/search the
 results and use **edit category** to send a correction to manual review. An individual bad
 file is reported without stopping the remaining sources.
 
+Processing-page play buttons audition the exported library WAV when available,
+including manually approved cuts. Pending sounds audition their stored proposed
+boundaries on the left channel. The waveform, duration, seeking and looping use
+that same playable range; the player labels it **library sound** or **proposed
+cut**. Detailed review retains the analysis region and original for context.
+Review decisions also refresh an already selected processing-page preview.
+
 Completed runs show all twelve banks, including empty banks, using this folder's
 `banks.json`. Sample counts deduplicate identical audio and allow membership in
 several banks. Extracted-kit banks show both kit and sound counts; sample banks
