@@ -2,6 +2,7 @@ import {Folder, metadataZip} from './storage.js';
 import {audioInfo, readWav} from './audio.js';
 import {destination,bankSummary,BANKS} from './taxonomy.js';
 import {readWorkspace} from './preparation.js';
+import {mountInstrumentExport} from './instrument-export.js';
 
 const $ = selector => document.querySelector(selector);
 const number = value => (value || 0).toLocaleString();
@@ -13,6 +14,7 @@ let handle = null, files = [], folderName = '', worker = null, running = false, 
 let total = 0, done = 0, within = 0, started = 0, stoppedAt = 0, timer = null, activeFilter = 'All', page = 0, selected = null;
 let context = null, source = null, buffer = null, playStarted = 0, playOffset = 0, playEnd = 0, playing = false, animation = null;
 let renderQueued = false, previewSequence = 0;
+let exporting = false;
 let previewTransients = [], previewLabel = '';
 const PAGE_SIZE = 30;
 const filterNames = ['All', 'Manual review', 'Similar loops', 'Drums', 'Loops', 'Synth', 'Voice', 'FX', 'Uncertain', 'Attention', 'Failed'];
@@ -54,13 +56,14 @@ function folderSelected() {
     $('#folder-status-dot').classList.remove('dim');
     $('#save-mode').textContent = handle ? 'SAVE TO FOLDER' : 'DOWNLOAD MODE';
     $('#open-review').disabled = false;
+    $('#instrument-export').hidden = false;
     $('#run').disabled = false; $('#run').textContent = 'prepare samples →';
     $('#folder-note').textContent = handle ? 'Only .egc1 metadata and derived audio are written. Your original files stay untouched.' :
         'This browser cannot save directly to your folder. Download the metadata ZIP when finished, then extract it into this same folder.';
     notice(''); setSteps('choose');
 }
 async function chooseFolder() {
-    if (running) { return; }
+    if (running || exporting) { return; }
     if (window.showDirectoryPicker && window.isSecureContext) {
         try {
             const selected = await window.showDirectoryPicker({id: 'egc-samples', mode: 'readwrite'});
@@ -81,7 +84,7 @@ for (const type of ['dragenter', 'dragover']) {
 }
 for (const type of ['dragleave', 'drop']) { $('#drop-zone').addEventListener(type, event => { event.preventDefault(); $('#drop-zone').classList.remove('dragging'); }); }
 $('#drop-zone').addEventListener('drop', async event => {
-    if (running) { return; }
+    if (running || exporting) { return; }
     const item = event.dataTransfer.items[0];
     if (item?.getAsFileSystemHandle) {
         try {
@@ -104,6 +107,7 @@ function setSteps(current) {
 }
 function setRunning(value) {
     running = value;
+    $('#instrument-export').inert = value;
     $('#choose-folder').disabled = value; $('#options').disabled = value; $('#force').disabled = value;
     $('#run').disabled = value || (!handle && !files.length);
     $('#pause').hidden = !value; $('#pause').disabled = false; $('#pause').textContent = 'pause';
@@ -131,7 +135,7 @@ function finishError(message) {
     if (!handle && outputs.size) { $('#export-metadata').hidden = false; $('#results').hidden = false; }
 }
 $('#run').addEventListener('click', () => {
-    if (running || (!handle && !files.length)) { return; }
+    if (running || exporting || (!handle && !files.length)) { return; }
     notice('');
     $('#bank-summary').hidden = true;
     if (!paused) { rows.clear(); analyses.clear(); report = null; }
@@ -343,6 +347,16 @@ $('#export-metadata').addEventListener('click', async () => {
 });
 
 function getFolder() { const folder = new Folder(handle, files); folder.outputs = outputs; return folder; }
+mountInstrumentExport($('#instrument-export'), () => ({name:folderName, sources:[{folder:getFolder()}]}), value => {
+    exporting = value;
+    $('#choose-folder').disabled = value || running;
+    $('#run').disabled = value || running || (!handle && !files.length);
+    $('#open-review').disabled = value || (!handle && !files.length);
+    $('#options').disabled = value || running;
+    $('#force').disabled = value || running;
+    $('#edit-category').disabled = value || running;
+    $('#save-correction').disabled = value || running;
+});
 function audioContext() { if (!context) { context = new AudioContext(); } return context; }
 function stopPlayback() {
     if (source) { source.onended = null; try { source.stop(); } catch (_) {} source.disconnect(); source = null; }

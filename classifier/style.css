@@ -1522,3 +1522,9 @@ tbody tr.selected td:first-child {
 .bank-group .empty-bank { border-color:#a58a46; background:#201e12; }
 .bank-group .empty-bank strong { color:#ead08c; }
 @media (max-width:800px) { #bank-groups { grid-template-columns:1fr; } }
+/* Instrument exports share the same controls in processing and review. */
+.instrument-export { margin:24px 0; }
+.instrument-export p { line-height:1.5; }
+.export-actions { display:flex; flex-wrap:wrap; align-items:center; gap:12px; }
+.export-actions select { max-width:100%; padding:10px; }
+.export-status { overflow-wrap:anywhere; font-size:13px; color:var(--muted); }

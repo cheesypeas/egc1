@@ -19,7 +19,7 @@
       <a class="brand" href="../../" aria-label="egc.one home"><img src="../../egc1.png" width="100" height="85" alt="egc1"><span>egc.one<span class="brand-slash"> / </span><span class="brand-section">tools</span></span></a>
       <span class="local-badge"><span class="status-dot"></span> runs on your computer</span>
     </header>
-    <nav class="review-toolbar" aria-label="Sample tools">
+    <nav class="review-toolbar" id="review-toolbar" aria-label="Sample tools">
       <a href="../">← sample processing</a>
       <div class="header-actions"><button id="refresh" class="button quiet" disabled>refresh</button><button id="export" class="button quiet" disabled>export reviews ↗</button></div>
     </nav>
@@ -36,6 +36,13 @@
     <div class="actions"><button id="deduplicate-loops" class="button quiet" disabled>Keep one of similar loops</button><span id="loop-similarity-scope" class="muted">Compares the current folder, or all prepared siblings when a parent is linked.</span></div><p id="loop-similarity-status" role="status" class="muted"></p>
     <details class="collection-progress" id="inventory-panel" open><summary><strong id="inventory-title">Ready in this folder</strong><span id="inventory-total"></span></summary><p>Start with the lowest counts. Choose a category to focus your review.</p><div id="inventory-groups" class="inventory-groups"></div><p id="inventory-note" class="muted"></p></details>
     <details id="collection-folders" hidden><summary>Parent and sibling folders</summary><div class="actions"><button id="collection-refresh" class="quiet">Refresh collection totals</button><button id="collection-download" class="quiet">Download collection index</button></div><p id="collection-focus"></p><button id="collection-clear-focus" class="quiet" hidden>Show all categories</button><p id="collection-errors" role="status"></p><table><thead><tr><th>Prepared folder</th><th>Ready</th><th>To review</th><th></th></tr></thead><tbody id="collection-folders-body"></tbody></table></details>
+    <section class="instrument-export" id="instrument-export" aria-labelledby="instrument-export-title">
+      <h2 id="instrument-export-title">Export to instrument</h2>
+      <p>Copy published sounds and required analysis. Excluded candidates and processing caches stay on your computer.</p>
+      <div class="export-actions"><label for="instrument-export-scope">Include</label><select id="instrument-export-scope"><option value="current">Current folder</option><option value="collection">Shared parent and prepared siblings</option></select><button type="button" class="button primary" data-export-start>export to instrument ↗</button><button type="button" class="button quiet" data-export-stop hidden>stop export</button></div>
+      <p class="muted">Choose a destination parent. A separate “EGC1 - [folder name]” library is created there. Export to the same place again to copy only changed files. Original tracks needed to verify cuts are included.</p>
+      <p class="export-status" data-export-status role="status">Approve any corrected points and category before exporting.</p>
+    </section>
     <p class="workflow-guide"><strong>1. Listen and mark corrections if needed</strong> → <strong>2. Correct the category</strong> → <strong>3. Approve or reject and move on</strong>. Your feedback is saved automatically with the decision.</p>
   </section>
   <div class="app-shell" id="review-app" hidden>

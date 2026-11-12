@@ -4,6 +4,7 @@ import {readCatalogue} from './inventory.js';
 import {Collection} from './collection.js';
 import {renderDashboard} from './dashboard.js';
 import {renderAdmission,curateCurrent} from './admission.js';
+import {mountInstrumentExport} from '../instrument-export.js';
 
 const $ = id => document.getElementById(id);
 let library = null, folder = null, name = '', writable = false, opening = false, sourceSession = null, collectionPath = null, viewState = null, viewActions = null;
@@ -58,6 +59,32 @@ const collection = new Collection(cache,CATEGORIES,()=>{
         renderDashboard(viewState,dashboardActions(),collection,name);
     }
 },message);
+mountInstrumentExport($('instrument-export'), async () => {
+    if (viewState?.saving || opening) { throw Error('Wait for the current sound decision to finish'); }
+    window.rememberDraft();
+    if ($('instrument-export-scope').value !== 'collection') {
+        if (!folder) { throw Error('Choose a prepared folder first'); }
+        return {name, sources:[{folder}]};
+    }
+    if (!collection.root) { throw Error('Choose the shared parent folder first'); }
+    const sources = [];
+    for (const row of collection.catalogues) {
+        if (row.error) { throw Error(`Cannot export ${row.path}: ${row.error}`); }
+        const pack = await collection.open(row.path);
+        const source = pack.folder || new Folder(pack.handle, pack.files || []);
+        if (!pack.folder) { source.outputs = new Map(pack.outputs || []); }
+        sources.push({path:row.path, folder:source});
+    }
+    return {name:collection.root.name, sources};
+}, value => {
+    $('review-app').inert = value;
+    $('review-folder').inert = value;
+    $('review-toolbar').inert = value;
+    for (const element of $('library-dashboard').children) {
+        if (element.id !== 'instrument-export') { element.inert = value; }
+    }
+    $('instrument-export-scope').disabled = value;
+}, () => collection.root?.handle ? [collection.root.handle] : []);
 function dashboardActions() {
     return {...viewActions,openPack,focusCategory:tag=>{collection.goal=tag;viewActions.focusCategory(tag);}};
 }

@@ -1,5 +1,33 @@
 # Browser port validation — 4 November 2026
 
+## Instrument export — 2026-11-12
+
+- Fourteen export checks passed, including the existing native `ToyLibrary
+  banks` reader accepting the exported drum-loop cut and extracted kit.
+  Coverage includes dependency selection, exact bytes, unchanged exports with
+  zero writes, same-size metadata edits, destination damage, protected feedback
+  and recordings, withdrawn samples/hits, removed collection catalogues,
+  missing/changed sources, stop/resume, disk-full rollback, legacy sources,
+  case collisions, unique sound counts and source/destination overlap.
+- Chrome integration passed for exports from processing and review, repeated
+  exports, withdrawing an existing exported sound, linked sibling folders,
+  concurrent processing lock refusal and 390-pixel layout. Destination writes
+  used isolated browser storage; no USB stick or user library was changed.
+- Existing curation, admission/chop and processing-preview Chrome regressions,
+  all eight Node test suites, and shared native/browser review UI checks passed.
+- A read-only dependency plan for the then-current EgcSamples parent catalogue
+  selected 453 unique samples and 159 kit hits: 1,523 files, approximately 1,004 MiB.
+  All five prepared catalogues selected 3,113 files, approximately 1,490 MiB.
+  The complete working collection contained about 14,650 files / 3.18 GiB.
+  These are inventory measurements, not USB transfer-speed benchmarks.
+
+Reproduce export checks with Node 22:
+`EGC_TOY_LIBRARY=/path/to/ToyLibrary node classifier/tests/instrument-export.test.mjs`.
+The optional native-reader check is skipped when that variable is absent.
+Browser workflow: `python classifier/tests/instrument-export-browser.py --chrome /path/to/chrome`.
+
+## Initial browser port
+
 Verified in installed desktop Google Chrome on Linux. Browser tests used fresh
 or dedicated test profiles; no instrument, USB stick or user Chrome profile was
 changed. This verifies execution, interoperability and workflow, not classifier

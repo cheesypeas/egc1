@@ -89,9 +89,45 @@ to WAV first. Models run in one background worker; processing speed depends on
 the computer and sample length. Similarity scores are not probabilities and
 suggested categories/cuts still need listening checks.
 
+## Export to instrument
+
+Choose **export to instrument** in processing or review, then choose the
+destination parent on the USB stick. This creates a separate `EGC1 - [folder
+name]` directory. Review also offers **Shared parent and prepared siblings**
+to export the linked collection with each prepared catalogue kept independent.
+Existing prepared folders can be exported without running classification again.
+
+The export follows published `library.json` entries, including corrected audio,
+their `entries/` analysis, retained kit hits and bank settings. Original tracks
+referenced by source provenance are included because the instrument verifies
+their hashes. Browser caches, embeddings, semantic scores, segmentation caches,
+unpublished candidates and review history remain on the computer. It is an
+instrument copy, not a backup of the review workspace. Unprepared live takes on
+the source are not published by exporting; prepare/review them first.
+
+Repeat to the same destination parent to update it. Files are compared by
+content, so unchanged files are not rewritten and same-size edits are detected.
+Source audio hashes are checked before publication. Removed sounds and kit hits
+are withdrawn from the destination catalogue first; catalogues are published
+after their dependencies finish copying. **Stop export** aborts the current
+write; repeating export resumes from the completed files. Unused destination
+audio is retained but no longer published. Nothing is deleted.
+
+Existing instrument feedback, favourites and recordings are preserved. Source
+feedback/resolutions seed missing destination files only. Export refuses source
+overlap or a nonempty destination directory it does not own. A small
+`.egc1/instrument-export.json` receipt records the managed catalogues. Export
+holds the processing/publication lock to keep the snapshot consistent.
+
+Direct instrument export needs desktop Chrome or Edge. It uses bounded file
+writes and does not build an audio ZIP in memory. Safely eject the USB stick
+after export completes. The original sample collection is never changed by
+exporting.
+
 ## Metadata compatibility
 
-Original audio is never rewritten. All writes are confined to `.egc1/`:
+Original audio is never rewritten. Processing writes are confined to `.egc1/`;
+instrument export writes a separate destination library:
 
 - `library.json`: version 1 accepted-only playable catalogue.
 - `workspace.json`: all candidates, validation failures and manual admission history.

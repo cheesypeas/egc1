@@ -58,6 +58,13 @@
                 <details class="advanced"><summary>more options</summary><label><input type="checkbox" id="force"> reanalyse existing audio <span>— slower; saved manual labels and review marks are retained</span></label><p>The models download when first needed (about 113 MiB for classification, plus 80 MiB for loop timing) and are kept in browser storage where available. Keep this page open while processing.</p></details>
             </section>
 
+            <section class="panel instrument-export" id="instrument-export" aria-labelledby="instrument-export-title" hidden>
+                <div class="panel-heading"><h2 id="instrument-export-title">Export to instrument</h2></div>
+                <p>Copy this folder’s published sounds to a USB stick or another folder. Processing caches and excluded candidates stay on your computer.</p>
+                <p class="folder-note">Choose a destination parent. A separate “EGC1 - [sample folder]” library is created there. Export to the same place again to copy only changed files. Original tracks needed to verify cuts are included.</p>
+                <div class="export-actions"><button type="button" class="button primary" data-export-start>export to instrument ↗</button><button type="button" class="button quiet" data-export-stop hidden>stop export</button></div>
+                <p class="export-status" data-export-status role="status">Published audio and its required analysis only. Your source folder stays unchanged.</p>
+            </section>
             <div id="notice" class="notice" role="status" hidden></div>
             <section class="panel processing" id="processing" aria-labelledby="progress-title" hidden>
                 <div class="panel-heading"><h2 id="progress-title"><span class="pulse-dot" id="activity-dot"></span><span id="stage">getting started</span></h2><span class="small-label" id="elapsed">00:00</span></div>
