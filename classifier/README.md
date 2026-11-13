@@ -89,6 +89,25 @@ to WAV first. Models run in one background worker; processing speed depends on
 the computer and sample length. Similarity scores are not probabilities and
 suggested categories/cuts still need listening checks.
 
+## Pitch detection and category roles
+
+Pitch windows retain their duration at high file sample rates, so low bass
+notes remain measurable at 96/192 kHz. Numerically invalid detector confidence
+values are excluded without treating them as different musical notes. Silence,
+noise and changing melodies still do not acquire a confirmed root.
+
+On an ordinary cached rerun, outdated high-rate pitch estimates and unconfirmed
+synth roots refresh through a pitch-only pass. Beat/vocal maps and classifier
+embeddings are retained. Keep **reanalyse existing audio** unchecked. Manual
+approved cuts and tuning retain their saved values. The portable format remains
+readable by the currently deployed instrument.
+
+Bass/Lead categories come from acoustic classifier scores and optional names,
+not the pitch estimate. Correcting a detected root does not automatically move
+a sound between those categories. The present prompt set describes Lead as
+bright/high-pitched; this may underrepresent dark or low-register leads.
+Category accuracy needs listening-labelled examples before changing that policy.
+
 ## Export to instrument
 
 Choose **export to instrument** in processing or review, then choose the

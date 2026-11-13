@@ -23,6 +23,15 @@ test('bank counts deduplicate placements, respect custom rules and expose empty/
     assert.equal(bankSummary(custom, rows).unassigned, 0);
 });
 
+test('Bass versus Lead assignment does not use the pitch estimate',async()=>{
+    const {classifyScores}=await import('../taxonomy.js');
+    const scores=Object.fromEntries([...Object.values(FAMILIES).flat(),'silence'].map(tag=>[tag,.01]));
+    scores.lead=.4;scores.bass=.3;
+    for(const root of [24,60,84]) {
+        assert.deepEqual(classifyScores(scores,.5,{root,hasRoot:true,transients:[]}).tags,['synth','lead']);
+    }
+});
+
 async function fixture(emit = () => {}) {
     // Asset metadata is local. No models or source audio are downloaded by these tests.
     const originalFetch = globalThis.fetch;
@@ -72,6 +81,38 @@ test('completed sources publish once, cached reruns and corrections retain accur
     assert.equal(events.at(-1).type, 'corrected');
     assert.deepEqual(events.at(-1).summary, f.pipeline.report.bankSummary);
 });
+
+for(const rate of [48000,96000]) {
+test(`older ${rate} Hz unconfirmed pitch caches refresh only pitch and retain beat maps and embeddings`,async()=>{
+    const f=await fixture();
+    f.files=[{path:'bass.wav',file:new Blob([encodeWav([Float32Array.from({length:rate},(_,i)=>.2*Math.sin(i*.01))],rate)])}];
+    const analyse=f.pipeline.inference.analyse;
+    f.pipeline.inference.analyse=async(...args)=>{
+        const data=await analyse(...args);data.pitch.hasRoot=false;data.pitch.confidence=0;return data;
+    };
+    await f.pipeline.run(f);
+    const inputs=[...f.files,...f.pipeline.folder.outputs].map(item=>Array.isArray(item) ? {path:item[0],file:item[1]} : item);
+    const row=f.pipeline.rows.values().next().value;
+    const before=await f.pipeline.folder.json(`.egc1/browser/raw-analysis/${row.id}.json`);
+    let calls=0;
+    const {PITCH_IMPLEMENTATION}=await import('../inference.js');
+    f.pipeline.inference.pitch=async()=>{
+        calls++;
+        const pitch={...before.pitch,analysisImplementation:PITCH_IMPLEMENTATION,hasRoot:true,root:24,confidence:1};
+        return {pitch,acousticPitch:{...pitch}};
+    };
+    f.pipeline.inference.analyse=()=>{throw Error('Full DSP/beat inference must not repeat');};
+    f.pipeline.inference.audio=()=>{throw Error('Audio embedding inference must not repeat');};
+    await f.pipeline.run({...f,files:inputs});
+    const after=await f.pipeline.folder.json(`.egc1/browser/raw-analysis/${row.id}.json`);
+    assert.equal(calls,1);assert.equal(after.pitch.root,24);
+    assert.deepEqual(after.loop,before.loop);assert.deepEqual(after.vocal,before.vocal);
+    assert.equal(f.pipeline.report.reusedEmbeddings,1);
+    const updated=[...f.files,...f.pipeline.folder.outputs].map(item=>Array.isArray(item) ? {path:item[0],file:item[1]} : item);
+    await f.pipeline.run({...f,files:updated});
+    assert.equal(calls,1,'compatible updated pitch must not run again');
+});
+}
 
 test('nested drum hints replace contaminated cached categories without rerunning models',async()=>{
     const events=[],f=await fixture(event=>events.push(event));

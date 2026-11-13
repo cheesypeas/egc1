@@ -3,7 +3,9 @@ import createAnalysis from './vendor/analysis.mjs';
 import {hashBytes, spectrogram} from './audio.js';
 
 export const FRONTEND = 'clap48k-r8brain-slaney-repeatpad-three-crops-left-web-v2';
+// Timing/frontend caches stay valid; pitch has its own incremental upgrade identity.
 export const PIPELINE = 'browser-library-1:core-802b986:left-zero-crossings:frontend-r8brain-v1:validated-preparation-v1';
+export const PITCH_IMPLEMENTATION = 'toysampler-wasm-v3-rate-aware-pitch';
 ort.env.wasm.numThreads = 1; // Works on ordinary static hosting without COOP/COEP headers.
 ort.env.wasm.wasmPaths = new URL('./vendor/', import.meta.url).href;
 ort.env.logLevel = 'warning';
@@ -131,6 +133,16 @@ export class Inference {
         const all = embedding.vectors.map(vector => vectors.map(prototype => prototype.reduce((sum, v, i) => sum + Math.fround(vector[i]) * Math.fround(v), 0)));
         return Object.fromEntries(names.map((name, index) => [name,
             all.reduce((sum, row) => sum + row[index], 0) / all.length * .5 + Math.max(...all.map(row => row[index])) * .5]));
+    }
+    async pitch(channels, rate, embeddedRoot = null) {
+        const native = await this.native(), channel = channels[0], pointer = native._malloc(channel.byteLength);
+        if (!pointer) { throw new Error('Audio is too large for available browser memory.'); }
+        try {
+            native.HEAPF32.set(channel, pointer / 4);
+            const json = native._toy_pitch(pointer, channels.length, channel.length, rate, embeddedRoot === null ? -1 : embeddedRoot);
+            if (!json) { throw new Error('Invalid audio dimensions for pitch analysis'); }
+            return JSON.parse(native.UTF8ToString(json));
+        } finally { native._free(pointer); }
     }
     async analyse(channels, rate, embeddedRoot = null, includeBeats = true, {sequenceOnly = false} = {}) {
         const native = await this.native(), pointers = [];

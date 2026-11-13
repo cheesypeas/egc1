@@ -1,5 +1,41 @@
 # Browser port validation — 4 November 2026
 
+## Rate-aware pitch and Bass/Lead investigation — 2026-11-13
+
+The native and WASM pitch window now retains at least the 48 kHz detector's
+duration at high input rates. A second numerical failure was reproduced at
+192 kHz: aubio could return confidence above one with fictitious MIDI-zero or
+ultrasonic pitches. Impossible estimates are excluded from the agreement check,
+with a majority-valid-frame requirement and the existing minimum evidence and
+80% note agreement. Ordinary low-confidence frames still require agreement.
+
+- All 75 tone cases passed in both the compiled native core and rebuilt WASM:
+  roots 24/33/45/60/69.23, rates 8/44.1/48/96/192 kHz, durations .25/1/2 seconds.
+  Pitch errors stayed below .06 semitone. Embedded tuning, acoustic/playback
+  separation, silence, noise, changing melodies, short audio and full-analysis
+  parity checks passed.
+- The real Chrome pitch-only API passed with left-channel isolation, high-rate
+  low bass, embedded tuning and unchanged source PCM, without model downloads.
+  Admission/chop and processing-preview Chrome regressions passed.
+- Cached high-rate pitch and unconfirmed synth roots upgrade once through the
+  pitch-only API. Tests verify unchanged beat/vocal maps, reused embeddings,
+  no full inference pass and reuse on the next run. Existing manual tuning and
+  approval preservation checks passed. Portable browser pitch schema v5 remains
+  compatible with the deployed instrument. Native local cache version is 6;
+  its portable reader continues accepting v5.
+- The nine Node suites passed. Native core check linked the actual shared
+  SampleAnalysis/LoopBeatContext implementation with bundled aubio; no firmware
+  or plugin was installed on the instrument.
+
+The EgcSamples parent catalogue audit found 99 Bass and 7 Lead entries. Browser
+roles are assigned from CLAP scores and nearest filename/folder hints; measured
+root does not select Bass/Lead. A regression covers unchanged Lead assignment
+with low/mid/high root estimates. The current Lead prompts describe bright and
+high-pitched notes, a plausible source of register/timbre bias rather than a
+confirmed correction for particular sounds. The folder has no explicit Lead/LD
+source-name labels and no saved Lead judgements to evaluate misclassifications.
+Category assignments and prompt vectors were not changed on this evidence.
+
 ## Optional synth pitch/attack checks — 2026-11-13
 
 Preparation policy v3 retains uncertain root and attack estimates as warnings

@@ -35,7 +35,7 @@ with tempfile.TemporaryDirectory(prefix='egc-wasm-build-') as temporary:
         '-sENVIRONMENT=web,worker', '-sALLOW_MEMORY_GROWTH=1', '-sINITIAL_MEMORY=33554432',
         '-sMAXIMUM_MEMORY=1073741824', '-sSTACK_SIZE=1048576',
         '-sEXPORTED_RUNTIME_METHODS=["UTF8ToString","HEAPF32"]',
-        '-sEXPORTED_FUNCTIONS=["_malloc","_free","_toy_analyse","_toy_destroy","_toy_json",'
+        '-sEXPORTED_FUNCTIONS=["_malloc","_free","_toy_pitch","_toy_analyse","_toy_destroy","_toy_json",'
         '"_toy_beat_features","_toy_feature_data","_toy_apply_beats","_toy_resample","_toy_resampled_data"]',
         '-o', str(out / 'analysis.mjs')], check=True)
 print(out / 'analysis.mjs')

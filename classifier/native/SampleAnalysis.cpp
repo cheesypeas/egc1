@@ -210,6 +210,12 @@ void FindTransients(SampleAnalysis & result, const float * const * audio, int ch
 void FindPitch(SampleAnalysis & result, const float * const * audio, int channels)
 {
     int window = 4096;
+    // Preserve the low-frequency coverage of the 48 kHz detector. A fixed
+    // sample count otherwise loses bass periods as the file rate increases.
+    while (window < result.sampleRate * (4096.0 / 48000.0))
+    {
+        window *= 2;
+    }
     while (window > result.numSamples)
     {
         window /= 2;
@@ -235,6 +241,7 @@ void FindPitch(SampleAnalysis & result, const float * const * audio, int channel
     std::vector<float> pitches;
     float confidenceSum = 0.0f;
     int audibleFrames = 0;
+    int invalidFrames = 0;
     for (int frame = 0; frame < frames; frame++)
     {
         const int offset = first + (frames > 1 ? static_cast<int>(static_cast<long long>(available) * frame / (frames - 1)) : 0);
@@ -271,13 +278,21 @@ void FindPitch(SampleAnalysis & result, const float * const * audio, int channel
         aubio_pitch_do(detector.get(), input.get(), output.get());
         const float confidence = aubio_pitch_get_confidence(detector.get());
         const float pitch = output->data[0];
+        // FFT round-off can produce impossible YIN confidence values and
+        // fictitious zero/ultrasonic pitches. Those are detector failures,
+        // not evidence of a changing musical note.
+        if (!std::isfinite(confidence) || confidence < 0.0f || confidence > 1.0001f || !std::isfinite(pitch))
+        {
+            invalidFrames++;
+            continue;
+        }
         if (confidence >= 0.85f && std::isfinite(pitch) && pitch >= 0.0f && pitch <= 127.0f)
         {
             pitches.push_back(pitch);
             confidenceSum += confidence;
         }
     }
-    if (pitches.empty() || pitches.size() < static_cast<size_t>(std::min(3, audibleFrames)))
+    if (pitches.empty() || invalidFrames * 2 > audibleFrames || pitches.size() < static_cast<size_t>(std::min(3, audibleFrames)))
     {
         return;
     }
@@ -294,7 +309,7 @@ void FindPitch(SampleAnalysis & result, const float * const * audio, int channel
         }
     }
     // A phrase with changing notes does not have a single sample root.
-    if (agreeing >= std::max(1, static_cast<int>(std::ceil(audibleFrames * 0.8))))
+    if (agreeing >= std::max(1, static_cast<int>(std::ceil((audibleFrames - invalidFrames) * 0.8))))
     {
         result.hasRoot = true;
         result.rootMidi = static_cast<float>(total / agreeing);

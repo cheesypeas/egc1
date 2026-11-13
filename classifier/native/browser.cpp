@@ -16,6 +16,15 @@ std::string LoopBeatDetectorIdentity() { return "browser-beat-this-final0-c5c146
 void AnalyseLoopBeats(SampleAnalysis &, const float * const *, int) {}
 
 namespace {
+void Normalise(float * audio, int samples)
+{
+    float peak = 0.0f;
+    for (int i = 0; i < samples; i++) { peak = std::max(peak, std::abs(audio[i])); }
+    if (peak > 0.0f)
+    {
+        for (int i = 0; i < samples; i++) { audio[i] *= 1.0f / peak; }
+    }
+}
 struct Prepared
 {
     float * left;
@@ -32,12 +41,7 @@ struct Prepared
     Prepared(float * a, int count, int frames, double sr) :
         left(a), channels(count), samples(frames), rate(sr), pointers {a, nullptr}
     {
-        float peak = 0.0f;
-        for (int i = 0; i < samples; i++) { peak = std::max(peak, std::abs(left[i])); }
-        if (peak > 0.0f)
-        {
-            for (int i = 0; i < samples; i++) { left[i] *= 1.0f / peak; }
-        }
+        Normalise(left, samples);
         pitch = AnalyseSample(pointers, 1, samples, rate, SampleAnalysisKind::Pitch, false);
         loop = AnalyseSample(pointers, 1, samples, rate, SampleAnalysisKind::Loop, false);
     }
@@ -59,7 +63,7 @@ void AnalysisJson(std::ostream & out, const SampleAnalysis & value, SampleAnalys
 {
     out << "{\"version\":1,\"analysisVersion\":" << (kind == SampleAnalysisKind::Pitch ? 5 : kind == SampleAnalysisKind::Vocal ? 2 : 8)
         << ",\"analysisRole\":\"" << (kind == SampleAnalysisKind::Pitch ? "pitch" : kind == SampleAnalysisKind::Vocal ? "vocal" : "loop")
-        << "\",\"analysisImplementation\":\"toysampler-wasm-v2-left-zero-crossings\",\"rate\":" << value.sampleRate
+        << "\",\"analysisImplementation\":\"" << (kind == SampleAnalysisKind::Pitch ? "toysampler-wasm-v3-rate-aware-pitch" : "toysampler-wasm-v2-left-zero-crossings") << "\",\"rate\":" << value.sampleRate
         << ",\"samples\":" << value.numSamples << ",\"hasRoot\":" << (value.hasRoot ? "true" : "false")
         << ",\"root\":" << value.rootMidi << ",\"confidence\":" << value.pitchConfidence << ",\"transients\":";
     Array(out, value.transients);
@@ -102,6 +106,32 @@ std::vector<float> converted;
 }
 
 extern "C" {
+const char * toy_pitch(float * left, int channels, int samples, double rate, double embeddedRoot)
+{
+    if (channels < 1 || channels > 2 || samples <= 0 || samples >= rate * 60 || rate < 8000 || rate > 192000) { return nullptr; }
+    Normalise(left, samples);
+    const float * audio[] {left};
+    const auto acoustic = AnalyseSample(audio, 1, samples, rate, SampleAnalysisKind::Pitch, false);
+    auto playback = acoustic;
+    if (embeddedRoot >= 0.0 && embeddedRoot <= 127.0)
+    {
+        playback.hasRoot = true;
+        playback.rootMidi = static_cast<float>(embeddedRoot);
+        playback.pitchConfidence = 1.0f;
+    }
+    std::ostringstream out;
+    out.imbue(std::locale::classic());
+    // Portable pitch schema v5 remains readable by the deployed instrument.
+    // The implementation identity versions the rate-aware estimator separately.
+    out << std::setprecision(12) << "{\"pitch\":";
+    AnalysisJson(out, playback, SampleAnalysisKind::Pitch);
+    out << ",\"acousticPitch\":";
+    AnalysisJson(out, acoustic, SampleAnalysisKind::Pitch);
+    out << '}';
+    static std::string json;
+    json = out.str();
+    return json.c_str();
+}
 Prepared * toy_analyse(float * left, float *, int channels, int samples, double rate)
 {
     if (channels < 1 || channels > 2 || samples <= 0 || samples >= rate * 60 || rate < 8000 || rate > 192000) { return nullptr; }

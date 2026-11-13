@@ -1,5 +1,5 @@
 import {audioInfo, readWav, scanWavRegions, energyEnvelope, splitEnvelope, encodeWav, hashFile, hashBytes} from './audio.js';
-import {Inference, PIPELINE, FRONTEND} from './inference.js';
+import {Inference, PIPELINE, FRONTEND, PITCH_IMPLEMENTATION} from './inference.js';
 import {classifyScores, roleEvidence, nameHints, applyHints, bankSummary, BANKS, HINT_METHOD} from './taxonomy.js';
 import {Folder, validAnalysis, validEmbedding, validOverrides, validBanks} from './storage.js';
 import {assessPreparation, playableOutput, publishWorkspace, readWorkspace, PREPARATION, reviewIdentity} from './preparation.js';
@@ -303,8 +303,17 @@ export class Pipeline {
         // Acceptance checks inspect the audible signal even when model results
         // are cached; model confidence alone is not a publication decision.
         if (!item.channels) { item.channels = info.compressed ? await this.decode(file, info.rate) : await readWav(file, info); }
+        let refreshedPitch = false;
         if (analysisCached) {
             this.report.reusedAnalysis++;
+            const tonal = (timingTags.length ? timingTags : previous?.tags || []).includes('synth');
+            const unknownRoot = !(data.acousticPitch || data.pitch)?.hasRoot;
+            if ((info.rate > 48000 || tonal && unknownRoot) && [data.pitch, data.acousticPitch].some(pitch => pitch?.analysisImplementation !== PITCH_IMPLEMENTATION)) {
+                this.stage('Updating pitch estimate');
+                Object.assign(data, await this.inference.pitch(item.channels, info.rate, info.root));
+                refreshedPitch = true;
+                if (!protectApproved) { await this.folder.writeJson(`.egc1/entries/${id}.json`,data); }
+            }
             if (data.pipeline !== this.pipeline) {
                 data.pipeline = this.pipeline;
                 if (!protectApproved) { await this.folder.writeJson(`.egc1/entries/${id}.json`,data); }
@@ -322,7 +331,7 @@ export class Pipeline {
             const counter=data.browserBeatPolicy?.skipped ? 'skipped' : analysisCached ? 'reused' : 'analysed';
             this.report.beatAnalysis[counter]++;
         }
-        if (!rawCache || rawPipeline !== this.pipeline || !analysisCached) { await this.folder.writeJson(`.egc1/browser/raw-analysis/${id}.json`,data); }
+        if (!rawCache || rawPipeline !== this.pipeline || !analysisCached || refreshedPitch) { await this.folder.writeJson(`.egc1/browser/raw-analysis/${id}.json`,data); }
         if (embeddingCached) {
             this.report.reusedEmbeddings++;
             if (embedding.frontend !== FRONTEND) {
