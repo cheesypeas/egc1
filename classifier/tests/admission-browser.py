@@ -208,6 +208,30 @@ try:
                     assert analysis['loop']['beats']==[0,4000,8000,12000]
                     assert analysis['loop']['beatPeriod']==4000
                     assert analysis['loop']['transients']==[0,4000,10000,12000]
+                for synth_role in ['pad', 'lead', 'bass']:
+                    # Older saved candidates must be approvable with the root
+                    # blank when their only tuning issue is an uncertain estimate.
+                    synth_row=dict(row, tags=['synth', synth_role], state='needs-review',
+                                   preparation=dict(reasons=['uncertain-root', 'uncertain-attacks'],
+                                                    bounds=dict(start=400, end=2400), attacks=dict(accepted=[], rejected=[800])))
+                    synth_data=json.loads(json.dumps(data))
+                    synth_data['pitch'].update(hasRoot=False, confidence=0)
+                    (metadata/'entries'/f'{identity}.json').write_text(json.dumps(synth_data))
+                    (metadata/'workspace.json').write_text(json.dumps(dict(version=1, state='complete', entries=[synth_row])))
+                    (metadata/'library.json').write_text(json.dumps(dict(version=1, state='complete', entries=[])))
+                    (metadata/'evaluation.json').write_text(json.dumps(dict(version=1, revision=0, reviews={}, exposures={}, history=[])))
+                    synth_page=browser.new_page()
+                    synth_page.on('pageerror', lambda error: errors.append(str(error)))
+                    try:
+                        synth_page.goto('http://127.0.0.1:8785/classifier/review/?no-sw')
+                        synth_page.locator('#review-folder-input').set_input_files(str(folder))
+                        synth_page.wait_for_selector('#workspace:not([hidden])')
+                        synth_page.locator('#admission-root').fill('')
+                        synth_page.locator('#admission-transients').fill('')
+                        synth_page.locator('#curate-add').click()
+                        synth_page.wait_for_function("document.querySelector('#current-pack-counts').textContent.startsWith('1 ready')")
+                    finally:
+                        synth_page.close()
                 assert not errors,errors
                 print('PASS: excluded-only review, marked correction, explicit approval, native output, published audition, reflagging, rejection and retained decisions',flush=True)
             finally:

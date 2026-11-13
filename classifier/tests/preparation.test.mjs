@@ -23,6 +23,26 @@ test('ringing decay candidates do not become repeated accepted chops',()=>{
     const assessed=assessPreparation([wave],rate,{pitch:{hasRoot:false},loop:{transients:candidates}},['drums','kick']);
     assert(assessed.reasons.includes('uncertain-attacks'));
 });
+test('pads, leads and bass retain uncertain pitch and attack as warnings while other synth roles require review',()=>{
+    const wave=new Float32Array(rate);burst(wave,rate*.02,.8,120);
+    const candidates=Array.from({length:12},(_,i)=>Math.round(rate*(.02+i*.006)));
+    const data={pitch:{hasRoot:false},loop:{transients:candidates}};
+    for(const role of ['pad','lead','bass']) {
+        const synth=assessPreparation([wave],rate,data,['synth',role]);
+        assert.deepEqual(synth.reasons,[]);
+        assert.deepEqual(synth.warnings,['uncertain-root','uncertain-attacks']);
+        assert(synth.attacks.rejected.length>5,'false decay chops are still rejected');
+    }
+    for(const tags of [['synth','keys'],['synth']]) {
+        const synth=assessPreparation([wave],rate,data,tags);
+        assert(synth.reasons.includes('uncertain-root'));
+        assert(synth.reasons.includes('uncertain-attacks'));
+    }
+    const ambiguous=assessPreparation([wave],rate,data,['synth','pad'],{mode:'alternatives'});
+    assert(ambiguous.reasons.includes('uncertain-category'));
+    const silent=assessPreparation([new Float32Array(rate)],rate,{pitch:{hasRoot:false},loop:{transients:[]}},['synth','pad']);
+    assert(silent.reasons.includes('silent-audio'));
+});
 test('real fast repeated attacks remain candidates instead of being removed by a fixed long interval',()=>{
     const wave=new Float32Array(rate), points=[rate*.02,rate*.028];
     for(const start of points){for(let i=0;i<rate*.002;i++){wave[start+i]=.7*Math.sin(i*1.9)*Math.exp(-i/(rate*.0004));}}

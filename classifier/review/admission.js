@@ -1,3 +1,5 @@
+import {allowsUncertainSynthAnalysis} from '../preparation.js';
+
 const $ = id => document.getElementById(id);
 let context = null, selected = null, busy = false, playerUrl = null, observedBounds = '';
 const correctionFields=['start','end','root','beats','transients'];
@@ -22,7 +24,8 @@ export function renderAdmission(state, refresh, setBounds, advance, persist, que
     $('admission').hidden = !state.session.publicationSupported || !item;
     if ($('admission').hidden) { return; }
     $('admission-state').textContent = item.publication === 'ready' ? 'Included in the playable library' : item.duplicateOf ? 'Similar loop excluded · one representative kept' : 'Excluded from the playable library';
-    $('admission-reasons').textContent = item.duplicateOf ? `Kept: ${item.duplicateOf.pack ? item.duplicateOf.pack+'/' : ''}${item.duplicateOf.path}. Approve this version to use it instead.` : item.publication==='ready' && item.admission ? 'Earlier checks resolved by your approval.' : [...(item.preparation?.reasons || []),...(item.preparation?.warnings?.includes('uncertain-chop-map') ? ['loop accepted; chop positions need checking'] : [])].map(reason => reason.replaceAll('-', ' ')).join(' · ');
+    const warningLabels = {'uncertain-chop-map':'chop positions need checking', 'uncertain-root':'root note unconfirmed', 'uncertain-attacks':'attack positions need checking'};
+    $('admission-reasons').textContent = item.duplicateOf ? `Kept: ${item.duplicateOf.pack ? item.duplicateOf.pack+'/' : ''}${item.duplicateOf.path}. Approve this version to use it instead.` : [...(item.publication==='ready' && item.admission ? ['Earlier checks resolved by your approval.'] : item.preparation?.reasons || []), ...(item.preparation?.warnings || []).map(warning => warningLabels[warning] || warning)].map(reason => reason.replaceAll('-', ' ')).join(' · ');
     $('admission-beats-label').hidden = !state.draft.tags.includes('loops');
     const loop=state.draft.tags.includes('loops'), synth=state.draft.tags.includes('synth');
     $('admission-end').parentElement.firstChild.textContent=loop ? 'Loop end (source seconds)' : 'End (optional tail trim, source seconds)';
@@ -77,7 +80,7 @@ export async function curateCurrent(decision) {
         if(decision==='add' && state.draft.tags.includes('drums') && (!transients.length || candidates[0]<start) && transients[0]!==start) { transients.unshift(start); }
         const root=$('admission-root').value==='' ? null : Number($('admission-root').value), beats=$('admission-beats').value==='' ? null : Number($('admission-beats').value);
         if(decision==='add' && state.draft.tags.includes('loops') && (!Number.isInteger(beats) || beats<2 || beats>128)) { throw Error('Enter the beat count for the marked loop'); }
-        if(decision==='add' && (item.preparation?.reasons || []).includes('uncertain-root') && root===null) { throw Error('Enter the corrected MIDI root note'); }
+        if(decision==='add' && (item.preparation?.reasons || []).includes('uncertain-root') && !allowsUncertainSynthAnalysis(state.draft.tags) && root===null) { throw Error('Enter the corrected MIDI root note'); }
         const draft=structuredClone(state.draft);
         draft.certainty=decision==='add' || draft.tags.length ? 'clear' : 'unsure';draft.quality=decision==='add' ? 'keep' : 'reject';
         const saved=await window.egcReview.request('/api/review/'+item.id,draft);

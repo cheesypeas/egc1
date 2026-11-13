@@ -233,16 +233,24 @@ Automatic preparation separates analysis context from playable bounds. It checks
 audible start/end positions, fresh attack evidence across frequency bands and
 time scales, performed beat intervals and candidate loop joins. A loopable phrase
 can sit inside the source with extra events at either end. Model confidence alone
-does not approve a loop. Dense periodic triggers and ambiguous cuts/categories
-go to **manual review** instead of becoming playable sounds or kit hits.
+does not approve a loop. Ambiguous loop phrases/categories and uncertain single
+drum-hit attacks go to **manual review** instead of becoming playable sounds.
 
 Loop endpoints follow performed attacks and a fitted beat grid, allowing missed
 or subdivided model beats without extending into an extra hit. The exported
 clock uses that fitted grid rather than the raw detector's missing/extra beats.
 Melodic/vocal loops also need matching performed context across the join.
 Uncertain chop positions alone do not exclude a supported whole loop: they show
-**loop accepted; chop positions need checking**, and automatic kit extraction
+**chop positions need checking**, and automatic kit extraction
 is withheld. Ambiguous phrase boundaries still require manual review.
+
+Pads, leads and bass can be included with uncertain root notes or attacks. These
+appear as
+**root note unconfirmed** and **attack positions need checking** warnings;
+neither requires manual approval. A manually approved sound in these roles can
+also leave its root unset. Silent sounds, ambiguous categories and explicitly flagged tuning
+errors still need review or correction. Root/attack checks remain required for
+keys, other unspecified synth sounds and single drum hits.
 
 After upgrading, close existing egc.one tabs, reopen the classifier and prepare
 the same folder with **reanalyse existing audio** unchecked. Saved raw analyses

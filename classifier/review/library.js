@@ -1,6 +1,6 @@
 import {canonicalPath} from '../storage.js';
 import {hashFile, hashBytes, audioInfo, readWav} from '../audio.js';
-import {readWorkspace, publishWorkspace, playableOutput, PREPARATION, signalFacts, reviewIdentity} from '../preparation.js';
+import {readWorkspace, publishWorkspace, playableOutput, PREPARATION, signalFacts, reviewIdentity, allowsUncertainSynthAnalysis} from '../preparation.js';
 
 export const CATEGORIES = {drums: ['kick','snare','clap','hat','tom','cymbal','percussion'], loops: ['drum-loop','melodic-loop','vocal-loop'], synth: ['bass','lead','pad','keys'], vocal: ['vocal-note'], fx: []};
 export const REASONS = new Set(['attack','tail','bleed','duplicate','not-drum','split','merged','leading-silence','trailing-silence','loop-gap','loop-click','loop-timing','wrong-category','wrong-role','wrong-root','too-short','silence','distorted']);
@@ -285,7 +285,7 @@ export class ReviewLibrary {
                 if (review.tags.includes('drums') && !transients.length) { throw new Error('Approve at least one attack for a drum sound'); }
                 const root = value.root ?? null;
                 if (root !== null && (!Number.isFinite(root) || root < 0 || root > 127)) { throw new Error('Root note must be between MIDI 0 and 127'); }
-                if ((review.reasons.includes('wrong-root') || review.tags.includes('synth') && !analysis.pitch.hasRoot) && root === null) { throw new Error('Specify the corrected root note before approval'); }
+                if ((review.reasons.includes('wrong-root') || review.tags.includes('synth') && !allowsUncertainSynthAnalysis(review.tags) && !analysis.pitch.hasRoot) && root === null) { throw new Error('Specify the corrected root note before approval'); }
                 const beats = value.beats ?? null;
                 if (review.tags.includes('loops') && (!Number.isInteger(beats) || beats < 2 || beats > 128)) { throw new Error('Specify the number of beats in the marked loop phrase'); }
                 const base = {...row, samples:end-start, channels:1, tags:clone(review.tags), tagsSource:'manual', needsReview:false,

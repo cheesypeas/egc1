@@ -1,5 +1,37 @@
 # Browser port validation — 4 November 2026
 
+## Optional synth pitch/attack checks — 2026-11-13
+
+Preparation policy v3 retains uncertain root and attack estimates as warnings
+for pads, leads and bass. Whole-loop validation remains independent of internal
+chop uncertainty. Silent audio, ambiguous categories, unsupported loop phrases,
+human rejections and instrument attention flags continue to require review.
+Manual approval can leave a synth root unset in these three roles; an explicit
+wrong-root correction still requires a note. Preparation policy changes reuse
+the existing model/analysis caches and preserve manual approvals.
+
+All eight Node suites passed. New cases cover all three synth roles, unconfirmed
+roots and empty chops, explicit tuning corrections, unchanged checks for keys
+and unspecified synths, rejected decay chops, silence and ambiguous categories.
+Chrome admission/chop regression also approved legacy pad/lead/bass candidates
+with blank root/chop fields; curation and collection regression passed.
+
+A read-only recheck followed by backed-up metadata updates admitted 224 synth
+entries and 31 loop entries across the EgcSamples parent and prepared siblings.
+These are catalogue placements, not unique sounds across folders. Eight older
+loops still failed phrase checks and one duplicate stayed excluded. Existing
+published cuts and manual decisions were checked unchanged; reviews, category
+overrides and instrument feedback were not written. Each updated catalogue keeps
+a receipt and replaced metadata in `.egc1/policy-backups/2026-11-13-synth-loop-warnings-*`.
+
+Pitch investigation used the existing WASM detector on clean two-second sine
+waves at 32.7032, 55, 110 and 440 Hz at 44.1/48/96/192 kHz. Thirteen of sixteen
+cases returned the expected root. The 32.7032 Hz tone was unconfirmed at 96 and
+192 kHz; 55 Hz was unconfirmed at 192 kHz. The fixed 4096-sample pitch window
+loses low-frequency coverage at higher sample rates. This release changes
+acceptance policy, not the pitch estimator. Longer rate-aware bass windows and
+stable-body pitch evidence need separate detector validation.
+
 ## Instrument export — 2026-11-12
 
 - Fourteen export checks passed, including the existing native `ToyLibrary

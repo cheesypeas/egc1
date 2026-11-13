@@ -45,6 +45,25 @@ test('a folder with only excluded sounds opens for review; saving does not admit
     const reloaded=await new ReviewLibrary(f.folder,f.cache).initialise();
     assert.equal(reloaded.session().items[0].publication,'ready');
 });
+for (const role of ['pad','lead','bass']) {
+test(`${role} can be approved without a detected root or chops; an explicit wrong-root correction still requires a note`,async()=>{
+    const f=await fixture();
+    f.library.options.analyse=async(channels,rate)=>{
+        const data=analysis(channels[0].length,rate);data.pitch.hasRoot=false;data.pitch.confidence=0;return data;
+    };
+    const payload={...f.payload,tags:['synth',role],quality:'keep',reasons:[]};
+    await f.library.save(f.sample,payload);
+    const reviewedAt=f.library.export().reviews[f.sample].updatedAt;
+    await f.library.admit(f.sample,{reviewedAt,transients:[],root:null});
+    const out=(await f.folder.json('.egc1/library.json')).entries[0];
+    assert.equal(out.state,'ready');assert.deepEqual(out.tags,[role,'synth']);
+    const data=await f.folder.json(`.egc1/entries/${out.id}.json`);
+    assert.equal(data.pitch.hasRoot,false);assert.deepEqual(data.loop.transients,[]);
+    await f.library.save(f.sample,{...payload,reasons:['wrong-root']});
+    const changedAt=f.library.export().reviews[f.sample].updatedAt;
+    await assert.rejects(()=>f.library.admit(f.sample,{reviewedAt:changedAt,transients:[],root:null}),/corrected root/);
+});
+}
 test('fresh human flags withdraw an accepted sound; rejection and imports do not republish it',async()=>{
     const f=await fixture('ready');
     assert.equal((await f.folder.json('.egc1/library.json')).entries.length,1);
