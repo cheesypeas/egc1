@@ -139,6 +139,29 @@ test('nested drum hints replace contaminated cached categories without rerunning
     assert.equal(f.pipeline.report.bankSummary.banks[2][0].sounds,0);
 });
 
+test('older automatic vocal exclusions are refreshed from cached analysis without rerunning models',async()=>{
+    const f=await fixture();f.files=[{...f.files[0],path:'vocal.wav'}];
+    const analyse=f.pipeline.inference.analyse;
+    f.pipeline.inference.analyse=async(...args)=>{
+        const data=await analyse(...args);data.pitch.hasRoot=false;return data;
+    };
+    await f.pipeline.run(f);
+    const workspace=await f.pipeline.folder.json('.egc1/workspace.json'),row=workspace.entries[0];
+    assert(row.tags.includes('vocal'));
+    row.state='needs-review';row.preparation.method='playable-phrase-and-attack-validation-v3';
+    row.preparation.reasons=['uncertain-root','uncertain-attacks'];delete row.output;
+    await f.pipeline.folder.writeJson('.egc1/workspace.json',workspace);
+    await f.pipeline.folder.writeJson('.egc1/library.json',{version:1,entries:[]});
+    f.pipeline.inference.analyse=()=>{throw Error('DSP must be reused');};
+    f.pipeline.inference.audio=()=>{throw Error('Audio embeddings must be reused');};
+    const files=[...new Map([...f.pipeline.folder.files,...f.pipeline.folder.outputs])].map(([path,file])=>({path,file}));
+    await f.pipeline.run({...f,files});
+    const current=(await f.pipeline.folder.json('.egc1/workspace.json')).entries[0];
+    assert.equal(current.state,'ready');assert.deepEqual(current.preparation.reasons,[]);
+    assert(current.preparation.warnings.includes('uncertain-root'));
+    assert.equal(f.pipeline.report.reusedAnalysis,1);assert.equal(f.pipeline.report.newEmbeddings,0);
+});
+
 test('only loop candidates request beat inference and explicit loops bypass the sequence precheck',async()=>{
     const f=await fixture(),calls=[];f.options.beats=true;
     f.files=['kick.wav','unknown.wav','drum_loop.wav','bass.wav'].map((path,i)=>({path,

@@ -36,13 +36,13 @@ confirmed correction for particular sounds. The folder has no explicit Lead/LD
 source-name labels and no saved Lead judgements to evaluate misclassifications.
 Category assignments and prompt vectors were not changed on this evidence.
 
-## Optional synth pitch/attack checks — 2026-11-13
+## Optional synth and vocal pitch/attack checks — 2026-11-13
 
-Preparation policy v3 retains uncertain root and attack estimates as warnings
-for pads, leads and bass. Whole-loop validation remains independent of internal
+Preparation policy v4 retains uncertain root and attack estimates as warnings
+for pads, leads, bass and vocals. Whole-loop validation remains independent of internal
 chop uncertainty. Silent audio, ambiguous categories, unsupported loop phrases,
 human rejections and instrument attention flags continue to require review.
-Manual approval can leave a synth root unset in these three roles; an explicit
+Manual approval can leave the root unset for these sounds; an explicit
 wrong-root correction still requires a note. Preparation policy changes reuse
 the existing model/analysis caches and preserve manual approvals.
 

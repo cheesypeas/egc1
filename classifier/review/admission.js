@@ -1,4 +1,4 @@
-import {allowsUncertainSynthAnalysis} from '../preparation.js';
+import {allowsUncertainAnalysis} from '../preparation.js';
 
 const $ = id => document.getElementById(id);
 let context = null, selected = null, busy = false, playerUrl = null, observedBounds = '';
@@ -80,7 +80,7 @@ export async function curateCurrent(decision) {
         if(decision==='add' && state.draft.tags.includes('drums') && (!transients.length || candidates[0]<start) && transients[0]!==start) { transients.unshift(start); }
         const root=$('admission-root').value==='' ? null : Number($('admission-root').value), beats=$('admission-beats').value==='' ? null : Number($('admission-beats').value);
         if(decision==='add' && state.draft.tags.includes('loops') && (!Number.isInteger(beats) || beats<2 || beats>128)) { throw Error('Enter the beat count for the marked loop'); }
-        if(decision==='add' && (item.preparation?.reasons || []).includes('uncertain-root') && !allowsUncertainSynthAnalysis(state.draft.tags) && root===null) { throw Error('Enter the corrected MIDI root note'); }
+        if(decision==='add' && (item.preparation?.reasons || []).includes('uncertain-root') && !allowsUncertainAnalysis(state.draft.tags) && root===null) { throw Error('Enter the corrected MIDI root note'); }
         const draft=structuredClone(state.draft);
         draft.certainty=decision==='add' || draft.tags.length ? 'clear' : 'unsure';draft.quality=decision==='add' ? 'keep' : 'reject';
         const saved=await window.egcReview.request('/api/review/'+item.id,draft);

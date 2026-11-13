@@ -49,6 +49,23 @@ test('real fast repeated attacks remain candidates instead of being removed by a
     const result=validateAttacks(wave,rate,points);
     assert(result.accepted.some(at=>Math.abs(at-points[1])<2));
 });
+test('vocals retain uncertain root and attacks as warnings without bypassing phrase or signal checks',()=>{
+    const wave=new Float32Array(rate);burst(wave,rate*.02,.8,120);
+    const candidates=Array.from({length:12},(_,i)=>Math.round(rate*(.02+i*.006)));
+    const data={pitch:{hasRoot:false},loop:{transients:candidates,beats:[]}};
+    for(const tags of [['vocal'],['vocal','vocal-note'],['synth','vocal','vocal-note']]) {
+        const vocal=assessPreparation([wave],rate,data,tags);
+        assert.deepEqual(vocal.reasons,[]);
+        assert.deepEqual(vocal.warnings,['uncertain-root','uncertain-attacks']);
+        assert(vocal.attacks.rejected.length>5);
+    }
+    const loop=assessPreparation([wave],rate,data,['loops','vocal-loop']);
+    assert.deepEqual(loop.reasons,['uncertain-loop-phrase']);
+    assert(loop.warnings.includes('uncertain-root'));
+    assert(!loop.reasons.includes('uncertain-attacks'));
+    assert(assessPreparation([wave],rate,data,['vocal'],{mode:'alternatives'}).reasons.includes('uncertain-category'));
+    assert(assessPreparation([new Float32Array(rate)],rate,data,['vocal']).reasons.includes('silent-audio'));
+});
 test('a quiet ghost under a loud decay remains review evidence if it cannot be verified',()=>{
     const wave=new Float32Array(rate), start=320, ghost=960;
     for(let i=0;i<rate*.3;i++){wave[start+i]+=.8*Math.sin(i*2*Math.PI*100/rate)*Math.exp(-i/(rate*.15));}

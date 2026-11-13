@@ -263,7 +263,7 @@ Uncertain chop positions alone do not exclude a supported whole loop: they show
 **chop positions need checking**, and automatic kit extraction
 is withheld. Ambiguous phrase boundaries still require manual review.
 
-Pads, leads and bass can be included with uncertain root notes or attacks. These
+Pads, leads, bass and vocals can be included with uncertain root notes or attacks. These
 appear as
 **root note unconfirmed** and **attack positions need checking** warnings;
 neither requires manual approval. A manually approved sound in these roles can

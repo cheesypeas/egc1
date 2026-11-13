@@ -1,7 +1,8 @@
 import {encodeWav, hashBytes, hashFile, audioInfo, readWav} from './audio.js';
 
-export const PREPARATION = 'playable-phrase-and-attack-validation-v3';
-export const allowsUncertainSynthAnalysis = tags => tags.includes('synth') && ['pad','lead','bass'].some(role => tags.includes(role));
+export const PREPARATION = 'playable-phrase-and-attack-validation-v4';
+const isVocal = tags => ['vocal','vocal-note','vocal-loop'].some(tag => tags.includes(tag));
+export const allowsUncertainAnalysis = tags => isVocal(tags) || tags.includes('synth') && ['pad','lead','bass'].some(role => tags.includes(role));
 export async function reviewIdentity(row) {
     if (row.reviewId) { return row.reviewId; }
     const p = row.provenance;
@@ -202,11 +203,11 @@ export function findLoopPhrase(audio, rate, beats, attacks, facts = signalFacts(
 
 export function assessPreparation(channels, rate, data, tags, evidence = {}) {
     const facts = signalFacts(channels[0], rate), attacks = validateAttacks(channels[0], rate, data.loop.transients || [], facts);
-    const reasons = [], warnings = [], optionalSynthAnalysis = allowsUncertainSynthAnalysis(tags);
+    const reasons = [], warnings = [], optionalAnalysis = allowsUncertainAnalysis(tags);
     if (facts.silent) { reasons.push('silent-audio'); }
     if (!tags.length || tags.includes('unclassified') || evidence.mode === 'alternatives' ||
         (tags.includes('loops') && !tags.some(tag=>['drum-loop','melodic-loop','vocal-loop'].includes(tag)))) { reasons.push('uncertain-category'); }
-    if (tags.includes('synth') && !data.pitch.hasRoot) { (optionalSynthAnalysis ? warnings : reasons).push('uncertain-root'); }
+    if ((tags.includes('synth') || isVocal(tags)) && !data.pitch.hasRoot) { (optionalAnalysis ? warnings : reasons).push('uncertain-root'); }
     let bounds = {start: facts.start, end: facts.end}, phrase = null;
     if (tags.includes('loops')) {
         phrase = findLoopPhrase(channels[0], rate, data.loop.beats || [], unique([...attacks.accepted, ...(data.loop.transients || [])]), facts, data.loop.downbeats || [], attacks.accepted);
@@ -226,9 +227,9 @@ export function assessPreparation(channels, rate, data, tags, evidence = {}) {
     const uncertainAttacks=attacks.rejected.some(at=>at>=bounds.start && at<bounds.end);
     if (uncertainAttacks) {
         if (tags.includes('loops')) { warnings.push('uncertain-chop-map'); }
-        else { (optionalSynthAnalysis ? warnings : reasons).push('uncertain-attacks'); }
+        else { (optionalAnalysis ? warnings : reasons).push('uncertain-attacks'); }
     }
-    return {version: 3, method: PREPARATION, reasons, warnings, bounds, phrase, attacks, silent: facts.silent};
+    return {version: 4, method: PREPARATION, reasons, warnings, bounds, phrase, attacks, silent: facts.silent};
 }
 
 export function sliceAnalysis(data, start, end, id, channels, {transients = null, root = null, phrase = null, manual = false} = {}) {
